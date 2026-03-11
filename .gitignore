@@ -1,0 +1,4 @@
+tmp-*.log
+tmp-live-*.txt
+.DS_Store
+Thumbs.db
