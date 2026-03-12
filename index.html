@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>门店私域实战系统</title>
-  <meta name="description" content="给门店老板使用的私域实战系统，按角色、当前需求、行业快速进入正文、行动指令、SOP、工具、话术、案例和资料下载。">
+  <title>门店私域增长系统</title>
+  <meta name="description" content="给门店老板使用的私域实战工具系统，按角色、当前需求和行业快速进入正文、行动指令、SOP、工具、话术、案例与下载资料。">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -12,102 +12,130 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-brand">
-        <p class="brand-kicker">门店增长实战工具</p>
-        <h1>门店私域实战系统</h1>
+        <p class="brand-kicker">作者黄剑锋 8 年门店私域实战经验总结</p>
+        <h1>门店私域增长系统</h1>
       </div>
       <div class="topbar-actions">
-        <button id="topbarHomeBtn" class="btn btn-ghost hidden" type="button">重新选择</button>
+        <button id="topbarHomeBtn" class="btn btn-ghost hidden" type="button">返回首页</button>
       </div>
     </header>
 
     <main class="page">
-      <section id="homeView" class="home-view">
-        <section class="hero-card">
-          <div class="hero-main">
-            <p class="eyebrow">给门店老板直接拿去学、拿去带、拿去落地</p>
-            <h2>门店私域增长作战台</h2>
-            <p class="hero-highlight">把引流、拉新、留存、复购真正做成门店日常动作</p>
-            <p class="hero-author">作者黄剑锋 8 年门店私域实战经验总结，累计操盘 2000 万私域沉淀、8 个亿业绩结果。</p>
-            <p class="hero-text">先完成角色、当前需求和行业选择，系统会自动排出你当前最该看的正文、行动指令、SOP、工具、话术、案例和下载资料。</p>
-            <div class="hero-command-row" aria-label="系统能力">
-              <span class="hero-command-pill">按角色定位</span>
-              <span class="hero-command-pill">按需求生成</span>
-              <span class="hero-command-pill">按行业匹配</span>
-            </div>
-          </div>
-          <div class="hero-side">
-            <div class="hero-panel">
-              <p class="hero-side-kicker">系统能力面板</p>
-              <div id="homeCounts" class="hero-counts"></div>
-            </div>
-          </div>
-        </section>
-
-        <section id="selectorCard" class="selector-card">
-          <div class="section-head">
-            <div>
+      <section id="homeView" class="view home-view">
+        <section class="home-hero">
+          <section id="selectorCard" class="selector-card">
+            <div class="selector-copy">
               <p class="eyebrow">开始使用</p>
-              <h3>先选角色和当前需求，行业可选后再快速进入</h3>
+              <h2>先选择角色和当前需求，再进入适合你的内容</h2>
+              <p class="section-note">作者黄剑锋累计操盘 2000 万私域沉淀、8 个亿业绩结果。这套系统会按你的情况优先排正文、SOP、工具、话术和案例。</p>
             </div>
-            <button id="homeStartButton" class="btn btn-primary" type="button">进入适合我的内容</button>
-          </div>
-          <div id="homeFilterPanel" class="filter-panel-stack"></div>
-          <div id="homeSelectionSummary" class="selection-note"></div>
+
+            <div id="homeFilterPanel" class="filter-panel-stack home-primary-filters"></div>
+
+            <div class="selector-footer">
+              <div class="selector-actions">
+                <button id="homeStartButton" class="btn btn-primary" type="button">开始阅读适合我的内容</button>
+                <button id="homeOriginalsButton" class="btn btn-secondary" type="button">直接看原文</button>
+              </div>
+              <div id="homeSelectionSummary" class="selection-note"></div>
+            </div>
+
+            <section class="advanced-wrap">
+              <div class="advanced-copy">
+                <p class="eyebrow">高级匹配（可选）</p>
+                <p class="section-note">行业保持常驻可见。你可以直接选择行业，让系统给出更贴近门店场景的内容排序。</p>
+              </div>
+              <button id="advancedToggle" class="btn btn-ghost advanced-toggle hidden" type="button" aria-expanded="true">高级匹配（可选）</button>
+              <div id="advancedPanel" class="advanced-panel">
+                <div id="homeIndustryPanel" class="filter-panel-stack"></div>
+              </div>
+            </section>
+          </section>
         </section>
 
-        <section class="module-section">
+        <section id="homeArsenalSection" class="module-section">
           <div class="section-head">
             <div>
-              <p class="eyebrow">系统模块</p>
-              <h3>正文、SOP、工具、话术、案例一站式进入</h3>
+              <p class="eyebrow">工具武器库</p>
+              <h3>先从最值得打开的 6 张内容卡开始</h3>
+              <p class="section-note">每张卡只保留标题、收益和一个主按钮，先帮你快速定位，再进入工作台继续阅读。</p>
             </div>
           </div>
-          <div id="homeModuleGrid" class="module-grid"></div>
+          <div id="homeArsenalGrid" class="arsenal-grid"></div>
         </section>
 
-        <section class="home-flow">
+        <section id="homeOriginalsSection" class="module-section">
           <div class="section-head">
             <div>
-              <p class="eyebrow">工作路径</p>
-              <h3>不是堆资料，而是按门店动作组织的一套工作流</h3>
+              <p class="eyebrow">完整阅读模式</p>
+              <h3>直接打开手册全文、外部资料和原表下载</h3>
+              <p class="section-note">这里集中展示完整手册、PDF / 官方资料以及原表下载入口，适合系统阅读和直接带走资料。</p>
             </div>
+            <button id="homeOriginalsEntryButton" class="btn btn-primary" type="button">进入完整阅读</button>
           </div>
-          <div id="homeFlowGrid" class="flow-grid"></div>
+          <div id="homeOriginalsPreviewGrid" class="download-grid"></div>
+        </section>
+
+        <section id="capabilitySection" class="capability-section">
+          <button id="capabilityToggle" class="btn btn-secondary capability-toggle" type="button" aria-expanded="false">了解系统能力</button>
+          <div id="capabilityPanel" class="capability-panel hidden">
+            <div class="capability-copy">
+              <p class="eyebrow">系统能力</p>
+              <h3>把引流、拉新、留存、复购真正做成门店日常动作</h3>
+              <p class="section-note">你不需要先理解整套结构才开始。系统会先给你能直接用的内容，再把能力、路径和资料说明折叠在这里备用。</p>
+            </div>
+            <div id="homeCounts" class="hero-counts"></div>
+            <div id="homeFlowGrid" class="flow-grid"></div>
+          </div>
         </section>
 
         <section id="continueCard" class="continue-card hidden">
           <div>
             <p class="eyebrow">继续阅读</p>
             <h3 id="continueTitle">继续上次进度</h3>
-            <p id="continueText">系统会记住你上次的选择和最近打开的工具。</p>
+            <p id="continueText">系统会记住你上次的选择和最近打开的内容。</p>
           </div>
           <button id="continueButton" class="btn btn-primary" type="button">继续查看</button>
         </section>
       </section>
 
-        <section id="workspaceView" class="workspace hidden">
-          <section class="workspace-header-card">
-            <div class="workspace-header-main">
-              <p class="eyebrow">当前选择</p>
-              <h2 id="workspaceTitle">老板 · 拉新 · 零售</h2>
-              <p id="workspaceSummary" class="workspace-summary"></p>
-              <div id="fallbackNote" class="fallback-note hidden"></div>
-            </div>
+      <section id="workspaceView" class="view workspace hidden">
+        <section class="workspace-header-card">
+          <div class="workspace-header-main">
+            <p class="eyebrow">当前工作台</p>
+            <h2 id="workspaceTitle">老板 / 拉新</h2>
+            <p id="workspaceSummary" class="workspace-summary"></p>
+            <div id="fallbackNote" class="fallback-note hidden"></div>
+          </div>
           <div class="workspace-header-actions">
             <button id="workspaceBackButton" class="btn btn-secondary" type="button">返回首页</button>
-            <button id="workspaceResetButton" class="btn btn-ghost" type="button">重置筛选</button>
+            <button id="workspaceResetButton" class="btn btn-ghost" type="button">重新筛选</button>
           </div>
         </section>
 
         <section class="workspace-toolbar-card">
+          <div id="workspaceFilterPanel" class="filter-panel-stack compact"></div>
           <div class="toolbar-search">
             <label class="search-field" for="searchInput">
-              <span>搜索正文、SOP、工具、话术、案例</span>
+              <span>搜索正文、SOP、工具、话术、案例和下载资料</span>
               <input id="searchInput" type="search" placeholder="例如：加粉、会员日、朋友圈、私聊转化">
             </label>
             <div id="searchState" class="search-state"></div>
           </div>
-          <div id="workspaceFilterPanel" class="filter-panel-stack compact"></div>
+        </section>
+
+        <section class="progress-card">
+          <div class="progress-card-head">
+            <div>
+              <p class="eyebrow">阅读进度</p>
+              <h3 id="workspaceCurrentLabel">你正在看：正文</h3>
+            </div>
+            <p id="workspaceProgressMeta" class="section-note"></p>
+          </div>
+          <div class="progress-track">
+            <div id="workspaceProgressBar" class="progress-fill"></div>
+          </div>
+          <p id="workspaceNextLabel" class="progress-helper"></p>
         </section>
 
         <section id="searchAssistSection" class="content-section search-assist hidden">
@@ -122,143 +150,153 @@
 
         <section id="workspaceQuickTabs" class="workspace-quick-tabs"></section>
 
-        <div class="workspace-layout">
-          <div class="workspace-main">
-            <section id="overview-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">板块总览</p>
-                  <h3>先看这一板块的目标、主线和误区</h3>
-                  <p id="overviewNote" class="section-note"></p>
-                </div>
-              </div>
-              <div id="overviewGrid" class="overview-grid"></div>
-            </section>
-
-            <section id="core-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">核心内容</p>
-                  <h3>当前组合下最该先读的长篇正文</h3>
-                  <p id="coreNote" class="section-note"></p>
-                </div>
-                <p id="coreCount" class="count-pill"></p>
-              </div>
-              <div id="coreCards" class="stack-list"></div>
-            </section>
-
-            <section id="action-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">行动指令</p>
-                  <h3>看完内容后，先按这几步直接执行</h3>
-                  <p id="actionNote" class="section-note"></p>
-                </div>
-              </div>
-              <div id="actionGrid" class="action-grid"></div>
-            </section>
-
-            <section id="sops-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">实战 SOP</p>
-                  <h3>按步骤执行，不靠临场发挥</h3>
-                  <p id="sopNote" class="section-note"></p>
-                </div>
-                <p id="sopCount" class="count-pill"></p>
-              </div>
-              <div id="sopCards" class="stack-list"></div>
-            </section>
-
-            <section id="tools-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">工具表</p>
-                  <h3>表格、清单、模板，能复制也能下载</h3>
-                  <p id="toolNote" class="section-note"></p>
-                </div>
-                <p id="toolCount" class="count-pill"></p>
-              </div>
-              <div id="toolCards" class="resource-grid"></div>
-            </section>
-
-            <section id="scripts-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">话术库</p>
-                  <h3>直接参考或复制改写的高频表达</h3>
-                  <p id="scriptNote" class="section-note"></p>
-                </div>
-                <p id="scriptCount" class="count-pill"></p>
-              </div>
-              <div id="scriptCards" class="resource-grid"></div>
-            </section>
-
-            <section id="cases-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">案例库</p>
-                  <h3>带结果数字的真实案例</h3>
-                  <p id="caseNote" class="section-note"></p>
-                </div>
-                <p id="caseCount" class="count-pill"></p>
-              </div>
-              <div id="caseCards" class="case-grid"></div>
-            </section>
-
-            <section id="recommend-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">继续延伸</p>
-                  <h3>如果你想继续往下看，建议先读这些内容</h3>
-                  <p id="recommendNote" class="section-note"></p>
-                </div>
-              </div>
-              <div id="recommendCards" class="recommend-grid"></div>
-            </section>
-
-            <section id="downloads-section" class="content-section">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">资料下载</p>
-                  <h3>可以直接下载的表格、打包资料和手册</h3>
-                  <p id="downloadNote" class="section-note"></p>
-                </div>
-                <p id="downloadCount" class="count-pill"></p>
-              </div>
-              <div id="downloadCards" class="download-grid"></div>
-            </section>
+        <section id="core-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">核心正文</p>
+              <h3>先看最值得优先阅读的内容</h3>
+              <p id="coreNote" class="section-note"></p>
+            </div>
+            <p id="coreCount" class="count-pill"></p>
           </div>
+          <div id="coreCards" class="stack-list"></div>
+        </section>
 
-          <section class="workspace-side">
-            <div class="panel-card">
-              <p class="eyebrow">当前重点</p>
-              <h3>先盯这几件事</h3>
-              <div id="stageFocusList" class="mini-list"></div>
+        <section id="action-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">行动指令</p>
+              <h3>看完后先按这几步直接执行</h3>
+              <p id="actionNote" class="section-note"></p>
             </div>
+          </div>
+          <div id="actionGrid" class="action-grid"></div>
+        </section>
 
-            <div class="panel-card">
-              <p class="eyebrow">关键指标</p>
-              <h3>老板先看这些数字</h3>
-              <div id="metricCards" class="metric-list"></div>
+        <section id="sops-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">实战 SOP</p>
+              <h3>按步骤执行，不靠临场发挥</h3>
+              <p id="sopNote" class="section-note"></p>
             </div>
+            <p id="sopCount" class="count-pill"></p>
+          </div>
+          <div id="sopCards" class="stack-list"></div>
+        </section>
 
-            <div class="panel-card">
-              <p class="eyebrow">手册与资料</p>
-              <h3>完整资料入口</h3>
-              <div id="manualLinks" class="manual-list"></div>
+        <section id="tools-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">工具表</p>
+              <h3>表格、检查表和模板，能复制也能下载</h3>
+              <p id="toolNote" class="section-note"></p>
             </div>
-          </section>
-        </div>
+            <p id="toolCount" class="count-pill"></p>
+          </div>
+          <div id="toolCards" class="resource-grid"></div>
+        </section>
 
-        <div class="mobile-action-bar">
-          <button class="btn btn-secondary" type="button" data-jump="core-section">看正文</button>
-          <button class="btn btn-secondary" type="button" data-jump="tools-section">看工具</button>
-          <button class="btn btn-secondary" type="button" data-jump="scripts-section">看话术</button>
-        </div>
+        <section id="scripts-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">话术库</p>
+              <h3>适合现场直接参考或复制改写</h3>
+              <p id="scriptNote" class="section-note"></p>
+            </div>
+            <p id="scriptCount" class="count-pill"></p>
+          </div>
+          <div id="scriptCards" class="resource-grid"></div>
+        </section>
+
+        <section id="cases-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">案例库</p>
+              <h3>带结果数字的真实案例</h3>
+              <p id="caseNote" class="section-note"></p>
+            </div>
+            <p id="caseCount" class="count-pill"></p>
+          </div>
+          <div id="caseCards" class="case-grid"></div>
+        </section>
+
+        <section id="downloads-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">资料下载</p>
+              <h3>可直接打开或下载的源表、压缩包和完整资料</h3>
+              <p id="downloadNote" class="section-note"></p>
+            </div>
+            <p id="downloadCount" class="count-pill"></p>
+          </div>
+          <div id="downloadCards" class="download-grid"></div>
+        </section>
+
+        <section id="recommend-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">继续推荐</p>
+              <h3>如果你还想继续往下看，建议先看这些内容</h3>
+              <p id="recommendNote" class="section-note"></p>
+            </div>
+          </div>
+          <div id="recommendCards" class="recommend-grid"></div>
+        </section>
       </section>
-      <section id="detailView" class="detail-view hidden">
-        <section class="detail-header-card">
+
+      <section id="originalsView" class="view originals-view hidden">
+        <section class="workspace-header-card">
+          <div class="workspace-header-main">
+            <p class="eyebrow">完整阅读模式</p>
+            <h2 id="originalsTitle">原文资料库</h2>
+            <p id="originalsSummary" class="workspace-summary"></p>
+          </div>
+          <div class="workspace-header-actions">
+            <button id="originalsBackHomeButton" class="btn btn-secondary" type="button">返回首页</button>
+            <button id="originalsBackWorkspaceButton" class="btn btn-ghost" type="button">返回工作台</button>
+          </div>
+        </section>
+
+        <section id="originals-manuals-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">完整手册</p>
+              <h3>直接打开整本手册进行系统阅读</h3>
+              <p id="originalsManualsNote" class="section-note"></p>
+            </div>
+            <p id="originalsManualsCount" class="count-pill"></p>
+          </div>
+          <div id="originalsManualsGrid" class="download-grid"></div>
+        </section>
+
+        <section id="originals-external-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">外部资料</p>
+              <h3>官方 PDF、网页私域资料和说明文档</h3>
+              <p id="originalsExternalNote" class="section-note"></p>
+            </div>
+            <p id="originalsExternalCount" class="count-pill"></p>
+          </div>
+          <div id="originalsExternalGrid" class="download-grid"></div>
+        </section>
+
+        <section id="originals-downloads-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">原表下载</p>
+              <h3>原表压缩包和当前组合命中的可下载表格</h3>
+              <p id="originalsDownloadsNote" class="section-note"></p>
+            </div>
+            <p id="originalsDownloadsCount" class="count-pill"></p>
+          </div>
+          <div id="originalsDownloadsGrid" class="download-grid"></div>
+        </section>
+      </section>
+
+      <section id="detailView" class="view detail-view hidden">
+        <section class="detail-header-card" id="detail-overview-section">
           <div class="detail-header-main">
             <p class="eyebrow">子页阅读</p>
             <h2 id="detailTitle">内容详情</h2>
@@ -269,6 +307,20 @@
             <button id="detailBackButton" class="btn btn-secondary" type="button">返回内容页</button>
             <button id="detailHomeButton" class="btn btn-ghost" type="button">返回首页</button>
           </div>
+        </section>
+
+        <section class="progress-card detail-progress-card">
+          <div class="progress-card-head">
+            <div>
+              <p class="eyebrow">连续阅读</p>
+              <h3 id="detailCurrentLabel">你正在看：正文</h3>
+            </div>
+            <p id="detailProgressMeta" class="section-note"></p>
+          </div>
+          <div class="progress-track">
+            <div id="detailProgressBar" class="progress-fill"></div>
+          </div>
+          <p id="detailNextLabel" class="progress-helper"></p>
         </section>
 
         <section class="detail-toolbar-card">
@@ -287,6 +339,17 @@
           <div id="detailBody" class="detail-body"></div>
         </section>
 
+        <section id="detail-action-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">下一步动作</p>
+              <h3>看完就执行，不要只停留在阅读</h3>
+              <p id="detailActionNote" class="section-note"></p>
+            </div>
+          </div>
+          <div id="detailActionCards" class="resource-grid"></div>
+        </section>
+
         <section id="detailRecommendationsSection" class="content-section">
           <div class="section-head">
             <div>
@@ -301,6 +364,24 @@
     </main>
   </div>
 
+  <aside id="floatingNav" class="floating-nav hidden" aria-label="悬浮导航">
+    <button id="floatingPrimaryBtn" class="btn btn-secondary" type="button">回顶部</button>
+    <button id="floatingDirectoryBtn" class="btn btn-primary" type="button">首页目录</button>
+  </aside>
+
+  <div id="directoryBackdrop" class="directory-backdrop hidden"></div>
+  <aside id="directorySheet" class="directory-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="directoryTitle">
+    <div class="directory-sheet-head">
+      <div>
+        <p class="eyebrow">快速定位</p>
+        <h3 id="directoryTitle">当前目录</h3>
+        <p id="directoryCurrent" class="directory-current"></p>
+      </div>
+      <button id="directoryCloseBtn" class="btn btn-ghost" type="button">关闭</button>
+    </div>
+    <div id="directoryList" class="directory-list"></div>
+  </aside>
+
   <div id="copyFallback" class="copy-fallback hidden" role="dialog" aria-modal="true" aria-labelledby="copyFallbackTitle">
     <div class="copy-card">
       <h3 id="copyFallbackTitle">自动复制失败</h3>
@@ -308,11 +389,6 @@
       <textarea id="copyFallbackText" readonly></textarea>
       <button id="copyFallbackClose" class="btn btn-primary" type="button">关闭</button>
     </div>
-  </div>
-
-  <div id="floatingNav" class="floating-nav hidden" aria-label="快速导航">
-    <button id="floatingCatalogBtn" class="btn btn-secondary" type="button">目录</button>
-    <button id="floatingHomeBtn" class="btn btn-primary" type="button">首页</button>
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
