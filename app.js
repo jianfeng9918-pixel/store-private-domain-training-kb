@@ -303,7 +303,10 @@ const els = {
   copyFallback: document.getElementById("copyFallback"),
   copyFallbackText: document.getElementById("copyFallbackText"),
   copyFallbackClose: document.getElementById("copyFallbackClose"),
-  toast: document.getElementById("toast")
+  toast: document.getElementById("toast"),
+  floatingNav: document.getElementById("floatingNav"),
+  floatingHomeBtn: document.getElementById("floatingHomeBtn"),
+  floatingCatalogBtn: document.getElementById("floatingCatalogBtn")
 };
 
 init();
@@ -407,6 +410,40 @@ function bindEvents() {
   });
 
   els.copyFallbackClose.addEventListener("click", closeFallback);
+
+  if (els.floatingHomeBtn) {
+    els.floatingHomeBtn.addEventListener("click", () => {
+      state.view = "home";
+      state.detailId = "";
+      persistState();
+      renderHome();
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+    });
+  }
+
+  if (els.floatingCatalogBtn) {
+    els.floatingCatalogBtn.addEventListener("click", () => {
+      if (state.view === "home") {
+        jumpTo("selectorCard");
+        return;
+      }
+      if (!isSelectionComplete()) {
+        state.view = "home";
+        renderHome();
+        jumpTo("selectorCard");
+        return;
+      }
+      if (state.view === "detail") {
+        state.view = "workspace";
+        persistState();
+        renderWorkspace("core-section");
+        return;
+      }
+      jumpTo("workspaceQuickTabs");
+    });
+  }
+
+  window.addEventListener("scroll", updateFloatingNav);
 }
 
 function handleDocumentClick(event) {
@@ -585,6 +622,7 @@ function showView(nextView) {
   els.detailView.classList.toggle("hidden", nextView !== "detail");
   els.topbarHomeBtn.classList.toggle("hidden", nextView === "home");
   persistState();
+  updateFloatingNav();
 }
 
 function renderFilterPanel(element, mode) {
@@ -3116,4 +3154,13 @@ function renderHomeModules(bundle) {
       </div>
     </article>
   `).join("");
+}
+
+
+function updateFloatingNav() {
+  if (!els.floatingNav) {
+    return;
+  }
+  const shouldShow = window.scrollY > 180;
+  els.floatingNav.classList.toggle("hidden", !shouldShow);
 }

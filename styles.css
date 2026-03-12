@@ -391,6 +391,31 @@ textarea {
   gap: 16px;
 }
 
+.home-view #selectorCard {
+  order: -1;
+}
+
+.floating-nav {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(46, 106, 230, 0.16);
+  background: rgba(248, 251, 255, 0.95);
+  box-shadow: 0 14px 32px rgba(26, 62, 126, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.floating-nav .btn {
+  min-width: 84px;
+  padding: 10px 14px;
+}
+
 .hero-card,
 .selector-card,
 .content-section,
@@ -1597,8 +1622,19 @@ th {
 }
 
 @media (max-width: 760px) {
+  .floating-nav {
+    right: 12px;
+    bottom: 82px;
+    flex-direction: row;
+  }
+
+  .floating-nav .btn {
+    min-width: 72px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
   body {
-    padding-bottom: 82px;
+    padding-bottom: 132px;
   }
 
   .topbar {
