@@ -100,18 +100,21 @@ const HOME_HERO_CARDS = [
   {
     id: "hero-structure",
     title: "内容体系",
+    target: "core-section",
     getValue: (totals) => `${totals.core} 条核心正文`,
     detail: "章节正文与专题深读已经排好。"
   },
   {
     id: "hero-assets",
     title: "实操资料",
+    target: "sops-section",
     getValue: (totals) => `${totals.sops + totals.tools + totals.scripts} 份 SOP / 工具 / 话术`,
     detail: "高频动作可直接落到 SOP、工具表和话术。"
   },
   {
     id: "hero-proof",
     title: "落地验证",
+    target: "cases-section",
     getValue: (totals) => `${totals.cases} 个案例 · ${totals.downloads} 份下载资料`,
     detail: "案例、源表和资料可以直接对照。"
   }
@@ -122,7 +125,8 @@ const storageKeys = {
   view: "training-kb-v2:view",
   search: "training-kb-v2:search",
   recent: "training-kb-v2:recent",
-  lastJump: "training-kb-v2:last-jump"
+  lastJump: "training-kb-v2:last-jump",
+  detail: "training-kb-v2:detail"
 };
 
 const defaults = {
@@ -224,13 +228,16 @@ const state = {
   search: "",
   lastJump: "",
   recentIds: [],
-  openItems: new Set()
+  openItems: new Set(),
+  detailId: "",
+  detailSourceSection: "core-section"
 };
 
 const els = {
   topbarHomeBtn: document.getElementById("topbarHomeBtn"),
   homeView: document.getElementById("homeView"),
   homeCounts: document.getElementById("homeCounts"),
+  selectorCard: document.getElementById("selectorCard"),
   homeFilterPanel: document.getElementById("homeFilterPanel"),
   homeSelectionSummary: document.getElementById("homeSelectionSummary"),
   homeModuleGrid: document.getElementById("homeModuleGrid"),
@@ -241,12 +248,27 @@ const els = {
   continueText: document.getElementById("continueText"),
   continueButton: document.getElementById("continueButton"),
   workspaceView: document.getElementById("workspaceView"),
+  detailView: document.getElementById("detailView"),
   workspaceTitle: document.getElementById("workspaceTitle"),
   workspaceSummary: document.getElementById("workspaceSummary"),
   fallbackNote: document.getElementById("fallbackNote"),
   workspaceBackButton: document.getElementById("workspaceBackButton"),
   workspaceResetButton: document.getElementById("workspaceResetButton"),
+  detailTitle: document.getElementById("detailTitle"),
+  detailSummary: document.getElementById("detailSummary"),
+  detailMeta: document.getElementById("detailMeta"),
+  detailBackButton: document.getElementById("detailBackButton"),
+  detailHomeButton: document.getElementById("detailHomeButton"),
+  detailToolbarTitle: document.getElementById("detailToolbarTitle"),
+  detailToolbarText: document.getElementById("detailToolbarText"),
+  detailPrimaryActions: document.getElementById("detailPrimaryActions"),
+  detailAnchorTabs: document.getElementById("detailAnchorTabs"),
+  detailBody: document.getElementById("detailBody"),
+  detailRecommendationsSection: document.getElementById("detailRecommendationsSection"),
+  detailRecommendationNote: document.getElementById("detailRecommendationNote"),
+  detailRecommendations: document.getElementById("detailRecommendations"),
   workspaceFilterPanel: document.getElementById("workspaceFilterPanel"),
+  searchAssistSection: document.getElementById("searchAssistSection"),
   workspaceQuickTabs: document.getElementById("workspaceQuickTabs"),
   searchInput: document.getElementById("searchInput"),
   searchState: document.getElementById("searchState"),
@@ -271,7 +293,6 @@ const els = {
   searchResults: document.getElementById("searchResults"),
   stageFocusList: document.getElementById("stageFocusList"),
   metricCards: document.getElementById("metricCards"),
-  recentList: document.getElementById("recentList"),
   manualLinks: document.getElementById("manualLinks"),
   coreCount: document.getElementById("coreCount"),
   sopCount: document.getElementById("sopCount"),
@@ -295,6 +316,7 @@ function init() {
 
 function hydrateState() {
   const savedSelection = parseJson(localStorage.getItem(storageKeys.selection), {});
+  const savedDetail = parseJson(localStorage.getItem(storageKeys.detail), {});
   state.role = savedSelection.role || "";
   state.stage = savedSelection.stage || "";
   state.industry = savedSelection.industry || "";
@@ -302,6 +324,8 @@ function hydrateState() {
   state.search = localStorage.getItem(storageKeys.search) || "";
   state.lastJump = localStorage.getItem(storageKeys.lastJump) || "";
   state.recentIds = parseJson(localStorage.getItem(storageKeys.recent), []);
+  state.detailId = savedDetail.id || "";
+  state.detailSourceSection = savedDetail.sourceSection || "core-section";
 
   if (!defaults.roles.includes(state.role)) {
     state.role = "";
@@ -316,6 +340,9 @@ function hydrateState() {
   if (!isSelectionComplete()) {
     state.view = "home";
   }
+  if (state.detailId && !model.lookup.has(state.detailId)) {
+    state.detailId = "";
+  }
 }
 
 function bindEvents() {
@@ -324,17 +351,17 @@ function bindEvents() {
 
   els.homeStartButton.addEventListener("click", () => {
     if (!isSelectionComplete()) {
-      showToast("请先完成角色和当前需求选择");
+      focusSelectionPrompt("请先完成角色和当前需求选择");
       return;
     }
-    openWorkspace("overview-section");
+    openWorkspace("core-section");
   });
 
   els.continueButton.addEventListener("click", () => {
     if (!isSelectionComplete()) {
       return;
     }
-    openWorkspace(state.lastJump || "overview-section");
+    openWorkspace(state.lastJump || "core-section");
   });
 
   els.workspaceBackButton.addEventListener("click", () => {
@@ -348,6 +375,18 @@ function bindEvents() {
     clearSelection();
     state.view = "home";
     state.search = "";
+    persistState();
+    renderApp();
+  });
+
+  els.detailBackButton.addEventListener("click", () => {
+    state.view = "workspace";
+    persistState();
+    renderWorkspace(state.detailSourceSection || getSectionForType(model.lookup.get(state.detailId)?.contentType));
+  });
+
+  els.detailHomeButton.addEventListener("click", () => {
+    state.view = "home";
     persistState();
     renderApp();
   });
@@ -371,6 +410,12 @@ function bindEvents() {
 }
 
 function handleDocumentClick(event) {
+  const detailButton = event.target.closest("[data-open-detail]");
+  if (detailButton) {
+    openDetail(detailButton.dataset.openDetail, detailButton.dataset.sourceSection);
+    return;
+  }
+
   const homeFilter = event.target.closest("[data-home-filter-group]");
   if (homeFilter) {
     toggleSelection(homeFilter.dataset.homeFilterGroup, homeFilter.dataset.homeFilterValue);
@@ -390,7 +435,7 @@ function handleDocumentClick(event) {
   const moduleButton = event.target.closest("[data-module-target]");
   if (moduleButton) {
     if (!isSelectionComplete()) {
-      showToast("先完成角色和当前需求选择");
+      focusSelectionPrompt("先完成角色和当前需求选择");
       return;
     }
     openWorkspace(moduleButton.dataset.moduleTarget);
@@ -431,6 +476,10 @@ function handleAccordionToggle(event) {
 }
 
 function renderApp() {
+  if (state.view === "detail" && isSelectionComplete() && state.detailId) {
+    renderDetail();
+    return;
+  }
   if (state.view === "workspace" && isSelectionComplete()) {
     renderWorkspace();
     return;
@@ -440,21 +489,39 @@ function renderApp() {
 
 function renderHome() {
   showView("home");
-  els.homeCounts.innerHTML = HOME_HERO_CARDS.map((card) => `
-    <article class="hero-stat-card">
-      <span class="meta-pill">${escapeHtml(card.title)}</span>
-      <strong>${escapeHtml(card.getValue(model.totals))}</strong>
-      <p>${escapeHtml(card.detail)}</p>
-    </article>
-  `).join("");
-
-  renderFilterPanel(els.homeFilterPanel, "home");
-
   const previewBundle = isSelectionComplete() ? buildBundle({
     role: state.role,
     stage: state.stage,
     industry: state.industry
   }) : null;
+  const displayTotals = previewBundle ? {
+    core: previewBundle.core.length,
+    sops: previewBundle.sops.length,
+    tools: previewBundle.tools.length,
+    scripts: previewBundle.scripts.length,
+    cases: previewBundle.cases.length,
+    downloads: previewBundle.downloads.length
+  } : model.totals;
+
+  els.homeCounts.innerHTML = HOME_HERO_CARDS.map((card) => `
+    <article class="hero-stat-card hero-entry-card">
+      <span class="meta-pill">${escapeHtml(card.title)}</span>
+      <strong>${escapeHtml(card.getValue(displayTotals))}</strong>
+      <p>${escapeHtml(card.detail)}</p>
+      <div class="hero-card-actions">
+        <button
+          class="btn ${isSelectionComplete() ? "btn-secondary" : "btn-ghost"} hero-card-btn"
+          type="button"
+          data-module-target="${card.target}"
+        >${isSelectionComplete() ? "打开对应模块" : "先完成选择"}</button>
+      </div>
+    </article>
+  `).join("");
+
+  renderFilterPanel(els.homeFilterPanel, "home");
+  els.homeFilterPanel.querySelectorAll(".optional-picker").forEach((picker) => {
+    picker.open = true;
+  });
 
   els.homeSelectionSummary.textContent = buildHomeSelectionSummary(previewBundle);
   els.homeStartButton.disabled = !isSelectionComplete();
@@ -515,16 +582,45 @@ function showView(nextView) {
   state.view = nextView;
   els.homeView.classList.toggle("hidden", nextView !== "home");
   els.workspaceView.classList.toggle("hidden", nextView !== "workspace");
-  els.topbarHomeBtn.classList.toggle("hidden", nextView !== "workspace");
+  els.detailView.classList.toggle("hidden", nextView !== "detail");
+  els.topbarHomeBtn.classList.toggle("hidden", nextView === "home");
   persistState();
 }
 
 function renderFilterPanel(element, mode) {
+  if (mode === "home") {
+    const primaryGroups = FILTER_GROUPS.filter((group) => group.key !== "industry");
+    const industryGroup = FILTER_GROUPS.find((group) => group.key === "industry");
+
+    element.innerHTML = `
+      <div class="home-filter-grid">
+        ${primaryGroups.map((group) => renderPickerCard(group, mode)).join("")}
+      </div>
+      ${industryGroup ? `
+        <details class="optional-picker"${state.industry ? " open" : ""}>
+          <summary>
+            <div class="optional-picker-text">
+              <strong>高级匹配（可选）</strong>
+              <p>${escapeHtml(industryGroup.hint)}</p>
+            </div>
+            <span class="chip chip-soft">${escapeHtml(state.industry || "不限定行业")}</span>
+          </summary>
+          ${renderPickerCard(industryGroup, mode, true)}
+        </details>
+      ` : ""}
+    `;
+    return;
+  }
+
+  element.innerHTML = FILTER_GROUPS.map((group) => renderPickerCard(group, mode)).join("");
+}
+
+function renderPickerCard(group, mode, isInner = false) {
   const attr = mode === "home" ? "data-home-filter-group" : "data-filter-group";
   const valueAttr = mode === "home" ? "data-home-filter-value" : "data-filter-value";
 
-  element.innerHTML = FILTER_GROUPS.map((group) => `
-    <section class="picker-card">
+  return `
+    <section class="picker-card${isInner ? " picker-card-nested" : ""}">
       <div class="picker-head">
         <div>
           <h4>${escapeHtml(group.label)}</h4>
@@ -542,7 +638,7 @@ function renderFilterPanel(element, mode) {
         `).join("")}
       </div>
     </section>
-  `).join("");
+  `;
 }
 
 function buildHomeSelectionSummary(bundle) {
@@ -577,7 +673,7 @@ function renderHomeModules(bundle) {
   const items = HOME_MODULES.filter((module) => !bundle || counts[module.countKey] > 0);
 
   els.homeModuleGrid.innerHTML = items.map((module, index) => `
-    <article class="module-card${isSelectionComplete() ? " is-clickable" : ""}">
+    <article class="module-card${isSelectionComplete() ? " is-ready" : " is-prompt"}${module.id === "module-core" ? " is-primary-entry" : ""}">
       <div class="module-card-top">
         <span class="module-index">${String(index + 1).padStart(2, "0")}</span>
         <div class="module-meta">
@@ -593,13 +689,797 @@ function renderHomeModules(bundle) {
       <div class="module-footer">
         <p class="module-scene">${escapeHtml(module.scene)}</p>
         <button
-          class="btn ${isSelectionComplete() ? "btn-secondary" : "btn-ghost"}"
+          class="btn ${isSelectionComplete() ? "btn-secondary" : "btn-ghost"} module-entry-btn"
           type="button"
           data-module-target="${module.target}"
         >${isSelectionComplete() ? `${escapeHtml(module.buttonLabel)} <span class="btn-inline-arrow">→</span>` : "先完成选择"}</button>
       </div>
     </article>
   `).join("");
+}
+
+function renderWorkspace(target = "") {
+  if (!isSelectionComplete()) {
+    renderHome();
+    return;
+  }
+
+  showView("workspace");
+  state.detailId = "";
+  els.searchInput.value = state.search;
+
+  const bundle = buildBundle({
+    role: state.role,
+    stage: state.stage,
+    industry: state.industry
+  });
+
+  const guide = STAGE_GUIDES[state.stage];
+  const searchGroups = buildSearchGroups(bundle, state.search);
+  const fallbackMessages = [bundle.note, buildSearchStateMessage(searchGroups)].filter(Boolean);
+
+  els.workspaceTitle.textContent = [state.role, state.stage, state.industry].filter(Boolean).join(" 路 ");
+  els.workspaceSummary.textContent = buildWorkspaceSummary(bundle, guide);
+  renderFallbackNote(fallbackMessages);
+  renderFilterPanel(els.workspaceFilterPanel, "workspace");
+  renderQuickTabs(bundle);
+  renderSectionNotes(bundle);
+  renderOverview(bundle, guide);
+  renderCore(bundle.core);
+  renderActionPlan(bundle, guide);
+  renderSops(bundle.sops);
+  renderTools(bundle.tools);
+  renderScripts(bundle.scripts);
+  renderCases(bundle.cases);
+  renderRecommendations(bundle);
+  renderDownloads(bundle.downloads);
+  renderSearchResults(searchGroups);
+  renderStageFocus(guide);
+  renderMetrics(guide);
+  renderManualLinks();
+
+  if (target) {
+    window.requestAnimationFrame(() => jumpTo(target));
+  } else {
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+  }
+}
+
+function renderActionPlan(bundle, guide) {
+  const stageMetrics = model.metrics.filter((metric) => metric.stageBuckets.includes(state.stage)).slice(0, 3);
+  const primaryCore = bundle.core.find((item) => item.actionChecklist && item.actionChecklist.length) || bundle.core[0];
+  const primarySop = bundle.sops[0];
+  const primaryTool = bundle.tools[0];
+  const primaryScript = bundle.scripts[0];
+  const primaryCase = bundle.cases[0];
+  const primaryDownload = bundle.downloads[0];
+
+  const cards = [
+    {
+      title: "现在先做",
+      label: "立刻执行",
+      items: (primaryCore && primaryCore.actionChecklist && primaryCore.actionChecklist.length ? primaryCore.actionChecklist : guide.focus).slice(0, 4),
+      links: primaryCore ? [{ id: primaryCore.id, label: "打开正文详情" }] : []
+    },
+    {
+      title: "今天怎么带队做",
+      label: "门店动作",
+      items: primarySop
+        ? primarySop.steps.slice(0, 3).map((step) => `${step.title}：${(step.items || [])[0] || "按 SOP 执行到位"}`)
+        : guide.order.slice(0, 3),
+      links: primarySop ? [{ id: primarySop.id, label: "打开 SOP 子页" }] : []
+    },
+    {
+      title: "现场要拿什么工具",
+      label: "工具配套",
+      items: [
+        primaryTool ? `先用《${primaryTool.title}》把今天门店的动作填一遍。` : "",
+        primaryScript ? `把《${primaryScript.title}》里的关键表达统一给团队。` : "",
+        primaryDownload ? `需要培训或交付时，顺手下载《${primaryDownload.title}》备用。` : ""
+      ].filter(Boolean),
+      links: [
+        primaryTool ? { id: primaryTool.id, label: "打开工具详情" } : null,
+        primaryScript ? { id: primaryScript.id, label: "打开话术详情" } : null
+      ].filter(Boolean)
+    },
+    {
+      title: "验收与复盘",
+      label: "结果检查",
+      items: [
+        ...stageMetrics.map((metric) => `${metric.title}：${metric.target || metric.detail || "作为当前板块结果盯盘"}`),
+        primaryCase ? `对照案例《${primaryCase.title}》，复盘本店还缺哪一步。` : ""
+      ].filter(Boolean).slice(0, 4),
+      links: primaryCase ? [{ id: primaryCase.id, label: "打开案例详情" }] : []
+    }
+  ].filter((card) => card.items.length > 0);
+
+  toggleSection("action-section", cards.length > 0);
+  if (!cards.length) {
+    return;
+  }
+
+  els.actionGrid.innerHTML = cards.map((card) => `
+    <article class="action-card">
+      <div class="module-meta">
+        <span class="meta-pill">${escapeHtml(card.label)}</span>
+      </div>
+      <h4>${escapeHtml(card.title)}</h4>
+      <ul class="plain-list">
+        ${card.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+      ${card.links.length ? `
+        <div class="resource-pills">
+          ${card.links.map((link) => `
+            <button class="chip chip-soft" type="button" data-open-detail="${escapeAttr(link.id)}" data-source-section="${escapeAttr(getSectionForType(model.lookup.get(link.id)?.contentType))}">${escapeHtml(link.label)}</button>
+          `).join("")}
+        </div>
+      ` : ""}
+    </article>
+  `).join("");
+}
+
+function renderRecommendations(bundle) {
+  const picks = [
+    ...bundle.core.slice(1, 4),
+    ...bundle.tools.slice(0, 2),
+    ...bundle.scripts.slice(0, 2),
+    ...bundle.cases.slice(0, 2)
+  ];
+
+  const seen = new Set();
+  const items = picks.filter((item) => {
+    if (!item || seen.has(item.id)) {
+      return false;
+    }
+    seen.add(item.id);
+    return true;
+  }).slice(0, 6);
+
+  toggleSection("recommend-section", items.length > 0);
+  if (!items.length) {
+    return;
+  }
+
+  els.recommendCards.innerHTML = items.map((item) => `
+    <article class="recommend-card">
+      <div class="module-meta">
+        <span class="meta-pill">${escapeHtml(TYPE_LABELS[item.contentType])}</span>
+        ${renderContextBadges(item)}
+      </div>
+      <h4>${escapeHtml(item.title)}</h4>
+      <p>${escapeHtml(item.summary || item.overview || item.scenario || "")}</p>
+      <button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="${escapeAttr(getSectionForType(item.contentType))}">继续阅读</button>
+    </article>
+  `).join("");
+}
+
+function renderSearchResults(groups) {
+  if (!state.search) {
+    if (els.searchAssistSection) {
+      els.searchAssistSection.classList.add("hidden");
+    }
+    els.searchResults.innerHTML = `<p class="search-placeholder">输入关键词后，这里会按正文、SOP、工具、话术、案例和下载资料分组返回结果。</p>`;
+    return;
+  }
+
+  if (els.searchAssistSection) {
+    els.searchAssistSection.classList.remove("hidden");
+  }
+
+  if (!groups.length) {
+    els.searchResults.innerHTML = `<p class="search-placeholder">当前组合里没有命中该关键词，页面仍然保留完整内容。</p>`;
+    return;
+  }
+
+  els.searchResults.innerHTML = groups.map((group) => `
+    <section class="search-group">
+      <p class="search-group-title">${escapeHtml(group.label)}</p>
+      <div class="search-group-list">
+        ${group.items.map((item) => group.key === "download"
+          ? `<a class="search-result-btn search-result-link" href="${escapeAttr(encodeURI(item.downloadUrl))}" ${isExternalUrl(item.downloadUrl) ? 'target="_blank" rel="noreferrer"' : "download"}>
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(item.summary)}</span>
+            </a>`
+          : `<button class="search-result-btn" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="${escapeAttr(getSectionForType(item.contentType))}">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(item.summary)}</span>
+            </button>`
+        ).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+function renderCoreCard(item) {
+  const previewParagraphs = item.sections
+    .slice(0, 2)
+    .flatMap((section) => (section.paragraphs || []).slice(0, 1))
+    .slice(0, 2);
+  const previewBullets = item.sections
+    .slice(0, 2)
+    .flatMap((section) => section.bullets || [])
+    .slice(0, 3);
+
+  return renderPreviewCard({
+    item,
+    meta: [
+      `<span class="meta-pill">${escapeHtml(TYPE_LABELS[item.contentType])}</span>`,
+      item.sourceManual ? `<span class="chip chip-soft">${escapeHtml(item.sourceManual)}</span>` : "",
+      renderContextBadges(item)
+    ].filter(Boolean).join(""),
+    body: `
+      ${previewParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+      ${previewBullets.length ? `<ul class="plain-list">${previewBullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>` : ""}
+      ${(item.actionChecklist || []).length ? `
+        <div class="preview-support">
+          <span class="meta-pill">行动指令</span>
+          <ul class="plain-list">
+            ${item.actionChecklist.slice(0, 3).map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+          </ul>
+        </div>
+      ` : ""}
+    `,
+    actions: [
+      `<button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="core-section">打开正文子页</button>`,
+      `<button class="btn btn-ghost" type="button" data-copy="${item.contentType}" data-id="${item.id}">复制内容</button>`,
+      item.manualFile ? `<a class="btn btn-ghost" href="${escapeAttr(encodeURI(item.manualFile))}" target="_blank" rel="noreferrer">打开原手册</a>` : ""
+    ]
+  });
+}
+
+function renderSopCard(item) {
+  return renderPreviewCard({
+    item,
+    meta: [
+      `<span class="meta-pill">${escapeHtml(item.timeCost || "实战 SOP")}</span>`,
+      item.owner ? `<span class="chip chip-soft">${escapeHtml(item.owner)}</span>` : "",
+      renderContextBadges(item)
+    ].filter(Boolean).join(""),
+    body: `
+      <div class="preview-stat-grid">
+        ${item.trigger ? `<article class="support-card"><h5>何时启动</h5><p>${escapeHtml(item.trigger)}</p></article>` : ""}
+        ${item.successMetrics && item.successMetrics.length ? `<article class="support-card"><h5>先盯哪些指标</h5><ul class="plain-list">${item.successMetrics.slice(0, 3).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul></article>` : ""}
+      </div>
+      <article class="preview-support">
+        <span class="meta-pill">关键步骤</span>
+        <ul class="plain-list">
+          ${item.steps.slice(0, 3).map((step) => `<li>${escapeHtml(step.title)}</li>`).join("")}
+        </ul>
+      </article>
+    `,
+    actions: [
+      `<button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="sops-section">打开 SOP 子页</button>`,
+      `<button class="btn btn-ghost" type="button" data-copy="sop" data-id="${item.id}">复制 SOP</button>`
+    ]
+  });
+}
+
+function renderToolCard(item) {
+  return renderPreviewCard({
+    item,
+    meta: [
+      `<span class="meta-pill">${escapeHtml(getToolModeLabel(item.downloadMode))}</span>`,
+      item.relatedChapter ? `<span class="chip chip-soft">${escapeHtml(getTitleById(item.relatedChapter))}</span>` : "",
+      renderContextBadges(item)
+    ].filter(Boolean).join(""),
+    body: `
+      ${item.table ? renderTable(item.table.columns, item.table.rows.slice(0, 3)) : ""}
+      ${(item.notes && item.notes.length) ? `<ul class="plain-list">${item.notes.slice(0, 3).map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
+    `,
+    actions: [
+      `<button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="tools-section">打开工具子页</button>`,
+      item.downloadMode !== "read-only" ? `<button class="btn btn-ghost" type="button" data-copy="tool" data-id="${item.id}">复制内容</button>` : "",
+      item.downloadMode === "download" ? `<a class="btn btn-ghost" href="${escapeAttr(encodeURI(item.downloadUrl))}" download>下载源表</a>` : ""
+    ]
+  });
+}
+
+function renderScriptCard(item) {
+  return renderPreviewCard({
+    item,
+    meta: [
+      `<span class="meta-pill">可复制话术</span>`,
+      item.relatedChapter ? `<span class="chip chip-soft">${escapeHtml(getTitleById(item.relatedChapter))}</span>` : "",
+      renderContextBadges(item)
+    ].filter(Boolean).join(""),
+    body: `
+      <article class="preview-support">
+        <span class="meta-pill">适用场景</span>
+        <p>${escapeHtml(item.scenario)}</p>
+      </article>
+      <ul class="plain-list">
+        ${(item.lines || []).slice(0, 4).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+      </ul>
+    `,
+    actions: [
+      `<button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="scripts-section">打开话术子页</button>`,
+      `<button class="btn btn-ghost" type="button" data-copy="script" data-id="${item.id}">复制话术</button>`
+    ]
+  });
+}
+
+function renderCaseCard(item) {
+  return renderPreviewCard({
+    item,
+    meta: [
+      `<span class="meta-pill">${escapeHtml(item.industry || item.industries[0] || state.industry || "案例")}</span>`,
+      item.sourceTag ? `<span class="chip chip-soft">${escapeHtml(item.sourceTag)}</span>` : "",
+      renderContextBadges(item)
+    ].filter(Boolean).join(""),
+    body: `
+      <div class="preview-stat-grid">
+        <article class="support-card">
+          <h5>做法</h5>
+          <ul class="plain-list">
+            ${(item.approach || []).slice(0, 3).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}
+          </ul>
+        </article>
+        <article class="support-card">
+          <h5>结果</h5>
+          <ul class="plain-list">
+            ${(item.results || []).slice(0, 3).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}
+          </ul>
+        </article>
+      </div>
+    `,
+    actions: [
+      `<button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="cases-section">打开案例子页</button>`,
+      `<button class="btn btn-ghost" type="button" data-copy="case" data-id="${item.id}">复制案例</button>`,
+      item.source && isExternalUrl(item.source.url) ? `<a class="btn btn-ghost" href="${escapeAttr(item.source.url)}" target="_blank" rel="noreferrer">查看来源</a>` : ""
+    ]
+  });
+}
+
+function renderRelatedResources(item) {
+  const ids = [];
+  if (item.relatedResources && item.relatedResources.length) {
+    ids.push(...item.relatedResources);
+  }
+  if (item.recommendedTools && item.recommendedTools.length) {
+    ids.push(...item.recommendedTools);
+  }
+  if (item.recommendedCases && item.recommendedCases.length) {
+    ids.push(...item.recommendedCases);
+  }
+
+  const uniqueIds = [...new Set(ids)].filter((id) => model.lookup.has(id));
+  if (!uniqueIds.length) {
+    return "";
+  }
+
+  return `
+    <article class="support-card">
+      <h5>相关资源</h5>
+      <div class="resource-pills">
+        ${uniqueIds.map((id) => `
+          <button class="chip chip-soft" type="button" data-open-detail="${escapeAttr(id)}" data-source-section="${escapeAttr(getSectionForType(model.lookup.get(id)?.contentType))}">
+            ${escapeHtml(getTitleById(id))}
+          </button>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderPreviewCard({ item, meta, body, actions }) {
+  return `
+    <article class="preview-card" id="${item.id}">
+      <div class="preview-card-head">
+        <div class="preview-card-copy">
+          <h4>${escapeHtml(item.title)}</h4>
+          <p>${escapeHtml(item.summary || item.overview || item.scenario || "")}</p>
+        </div>
+        <div class="summary-meta">${meta}</div>
+      </div>
+      <div class="preview-card-body">
+        ${body}
+      </div>
+      <div class="card-actions">
+        ${actions.filter(Boolean).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderDetail() {
+  const item = model.lookup.get(state.detailId);
+  if (!item) {
+    openWorkspace(state.detailSourceSection || "core-section");
+    return;
+  }
+
+  showView("detail");
+
+  const bundle = buildBundle({
+    role: state.role,
+    stage: state.stage,
+    industry: state.industry
+  });
+  const guide = STAGE_GUIDES[state.stage];
+  const recommendations = buildDetailRecommendations(item, bundle);
+
+  els.detailTitle.textContent = item.title;
+  els.detailSummary.textContent = buildDetailSummary(item, guide);
+  els.detailMeta.innerHTML = [
+    `<span class="meta-pill">${escapeHtml(TYPE_LABELS[item.contentType] || "内容详情")}</span>`,
+    `<span class="chip chip-soft">${escapeHtml([state.role, state.stage, state.industry].filter(Boolean).join(" / "))}</span>`,
+    item.sourceTag ? `<span class="chip chip-soft">${escapeHtml(item.sourceTag)}</span>` : "",
+    renderContextBadges(item)
+  ].filter(Boolean).join("");
+
+  els.detailToolbarTitle.textContent = item.title;
+  els.detailToolbarText.textContent = buildDetailToolbarText(item);
+  els.detailPrimaryActions.innerHTML = buildDetailPrimaryActions(item);
+  els.detailAnchorTabs.innerHTML = buildDetailAnchorTabs(item);
+  els.detailBody.innerHTML = buildDetailBody(item);
+
+  toggleSection("detailRecommendationsSection", recommendations.length > 0);
+  if (recommendations.length) {
+    els.detailRecommendationNote.textContent = "这些内容和你刚刚看的正文、SOP 或工具最相关，适合顺着继续看。";
+    els.detailRecommendations.innerHTML = recommendations.map((nextItem) => `
+      <article class="recommend-card">
+        <div class="module-meta">
+          <span class="meta-pill">${escapeHtml(TYPE_LABELS[nextItem.contentType])}</span>
+          ${renderContextBadges(nextItem)}
+        </div>
+        <h4>${escapeHtml(nextItem.title)}</h4>
+        <p>${escapeHtml(nextItem.summary || nextItem.overview || nextItem.scenario || "")}</p>
+        <button class="btn btn-secondary" type="button" data-open-detail="${escapeAttr(nextItem.id)}" data-source-section="${escapeAttr(getSectionForType(nextItem.contentType))}">继续看这一页</button>
+      </article>
+    `).join("");
+  }
+
+  window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+}
+
+function buildDetailSummary(item, guide) {
+  const section = getSectionForType(item.contentType);
+  const sectionLabelMap = {
+    "core-section": "章节学习",
+    "sops-section": "实战 SOP",
+    "tools-section": "工具表",
+    "scripts-section": "话术库",
+    "cases-section": "案例库",
+    "downloads-section": "资料下载"
+  };
+  const sectionLabel = sectionLabelMap[section] || "当前内容";
+  return `${guide.summary} 这一页来自${sectionLabel}，已经把长内容拆成独立子页，方便你连续阅读和返回上一层。`;
+}
+
+function buildDetailToolbarText(item) {
+  if (item.contentType === "sop") {
+    return "这页适合店长或老板直接照着带团队执行。先顺着步骤看完，再复制 SOP 或下载表格。";
+  }
+  if (item.contentType === "tool") {
+    return "这页适合边看边用。先确认字段，再决定是复制内容还是直接下载源表。";
+  }
+  if (item.contentType === "case") {
+    return "这页适合拿来校准打法。先看做法和结果，再看可复用点。";
+  }
+  if (item.contentType === "script") {
+    return "这页适合现场统一表达。先看场景，再用推荐说法做角色演练。";
+  }
+  return "这页已经拆成独立阅读子页，适合连续看完整内容，再回到工作台继续拿工具和案例。";
+}
+
+function buildDetailPrimaryActions(item) {
+  const actions = [];
+  if (item.downloadMode !== "read-only" && ["chapter", "deepread", "sop", "tool", "script", "case"].includes(item.contentType)) {
+    actions.push(`<button class="btn btn-secondary" type="button" data-copy="${item.contentType}" data-id="${item.id}">复制内容</button>`);
+  }
+  if (item.downloadMode === "download" && item.downloadUrl) {
+    actions.push(`<a class="btn btn-secondary" href="${escapeAttr(encodeURI(item.downloadUrl))}" download>下载源表</a>`);
+  }
+  if (item.manualFile) {
+    actions.push(`<a class="btn btn-ghost" href="${escapeAttr(encodeURI(item.manualFile))}" target="_blank" rel="noreferrer">打开原手册</a>`);
+  }
+  if (item.source && isExternalUrl(item.source.url)) {
+    actions.push(`<a class="btn btn-ghost" href="${escapeAttr(item.source.url)}" target="_blank" rel="noreferrer">查看来源</a>`);
+  }
+  return actions.join("");
+}
+
+function buildDetailAnchorTabs() {
+  const tabs = [
+    { id: "detail-overview", label: "看概览" },
+    { id: "detail-main", label: "看正文" },
+    { id: "detail-action-points", label: "看行动" },
+    { id: "detail-assets", label: "看资料" }
+  ];
+
+  return tabs.map((tab) => `
+    <button class="quick-tab" type="button" data-jump="${tab.id}">${escapeHtml(tab.label)}</button>
+  `).join("");
+}
+
+function buildDetailBody(item) {
+  const detailRenderers = {
+    chapter: buildCoreDetailBody,
+    deepread: buildCoreDetailBody,
+    sop: buildSopDetailBody,
+    tool: buildToolDetailBody,
+    script: buildScriptDetailBody,
+    case: buildCaseDetailBody
+  };
+  const renderer = detailRenderers[item.contentType] || buildCoreDetailBody;
+  return `
+    <div class="detail-stack">
+      <section id="detail-overview" class="detail-block detail-lead-block">
+        <div class="module-meta">
+          <span class="meta-pill">${escapeHtml(TYPE_LABELS[item.contentType] || "内容")}</span>
+          ${renderContextBadges(item)}
+        </div>
+        <h3>${escapeHtml(item.title)}</h3>
+        <p>${escapeHtml(item.summary || item.overview || item.scenario || "")}</p>
+      </section>
+      ${renderer(item)}
+    </div>
+  `;
+}
+
+function buildCoreDetailBody(item) {
+  return `
+    <section id="detail-main" class="detail-block">
+      <div class="detail-grid">
+        ${item.sections.map((section) => `
+          <article class="chapter-block">
+            <h5>${escapeHtml(section.title)}</h5>
+            ${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+            ${(section.bullets && section.bullets.length) ? `<ul class="plain-list">${section.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>` : ""}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <section id="detail-action-points" class="detail-block">
+      <div class="detail-grid">
+        ${(item.actionChecklist && item.actionChecklist.length) ? `
+          <article class="support-card">
+            <h5>行动指令</h5>
+            <ul class="plain-list">
+              ${item.actionChecklist.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+            </ul>
+          </article>
+        ` : ""}
+        ${(item.managerChecklist && item.managerChecklist.length) ? `
+          <article class="support-card">
+            <h5>店长检查表</h5>
+            <ul class="plain-list">
+              ${item.managerChecklist.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+            </ul>
+          </article>
+        ` : ""}
+      </div>
+    </section>
+    <section id="detail-assets" class="detail-block">
+      ${renderRelatedResources(item) || `<article class="support-card"><h5>资料入口</h5><p>这页已经是正文详情。你可以返回内容页继续切换工具、话术和案例。</p></article>`}
+    </section>
+  `;
+}
+
+function buildSopDetailBody(item) {
+  return `
+    <section id="detail-main" class="detail-block">
+      <div class="detail-grid">
+        <div class="support-grid">
+          ${item.trigger ? `<article class="support-card"><h5>何时启动</h5><p>${escapeHtml(item.trigger)}</p></article>` : ""}
+          ${item.owner ? `<article class="support-card"><h5>谁负责</h5><p>${escapeHtml(item.owner)}</p></article>` : ""}
+          ${item.watchouts && item.watchouts.length ? `<article class="support-card"><h5>常见误区</h5><ul class="plain-list">${item.watchouts.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul></article>` : ""}
+          ${item.successMetrics && item.successMetrics.length ? `<article class="support-card"><h5>要盯哪些数字</h5><ul class="plain-list">${item.successMetrics.map((value) => `<li>${escapeHtml(value)}</li>`).join("")}</ul></article>` : ""}
+        </div>
+        ${item.steps.map((step) => `
+          <article class="chapter-block">
+            <h5>${escapeHtml(step.title)}</h5>
+            <ul class="plain-list">
+              ${step.items.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}
+            </ul>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <section id="detail-action-points" class="detail-block">
+      <div class="detail-grid">
+        ${(item.deliverables && item.deliverables.length) ? `<article class="support-card"><h5>输出件</h5><ul class="plain-list">${item.deliverables.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}</ul></article>` : ""}
+        ${(item.acceptance && item.acceptance.length) ? `<article class="support-card"><h5>验收标准</h5><ul class="plain-list">${item.acceptance.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}</ul></article>` : ""}
+      </div>
+    </section>
+    <section id="detail-assets" class="detail-block">
+      <article class="support-card">
+        <h5>返回后继续看什么</h5>
+        <p>看完这一页后，建议返回内容页继续拿工具表、话术和案例，不需要重新筛选。</p>
+      </article>
+    </section>
+  `;
+}
+
+function buildToolDetailBody(item) {
+  return `
+    <section id="detail-main" class="detail-block">
+      <div class="detail-grid">
+        <article class="chapter-block">
+          ${item.table ? renderTable(item.table.columns, item.table.rows) : `<p>${escapeHtml(item.summary)}</p>`}
+        </article>
+        ${item.previewUrl ? `<div class="preview-media detail-preview-media"><img src="${escapeAttr(item.previewUrl)}" alt="${escapeAttr(item.title)} 预览图" loading="lazy"></div>` : ""}
+      </div>
+    </section>
+    <section id="detail-action-points" class="detail-block">
+      <div class="detail-grid">
+        ${(item.notes && item.notes.length) ? `<article class="support-card"><h5>使用提醒</h5><ul class="plain-list">${item.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></article>` : ""}
+        <article class="support-card">
+          <h5>怎么用这张表</h5>
+          <ul class="plain-list">
+            <li>先按今天的门店情况填一版，再决定哪些字段要固定成标准动作。</li>
+            <li>如果是培训场景，建议先复制内容演示，再下载源表做门店版。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+    <section id="detail-assets" class="detail-block">
+      ${renderRelatedResources(item) || `<article class="support-card"><h5>相关内容</h5><p>你可以回到内容页继续看配套话术或案例。</p></article>`}
+    </section>
+  `;
+}
+
+function buildScriptDetailBody(item) {
+  return `
+    <section id="detail-main" class="detail-block">
+      <div class="detail-grid">
+        <article class="chapter-block">
+          <h5>适用场景</h5>
+          <p>${escapeHtml(item.scenario)}</p>
+        </article>
+        <article class="chapter-block">
+          <h5>推荐说法</h5>
+          <ul class="plain-list">
+            ${(item.lines || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+          </ul>
+        </article>
+      </div>
+    </section>
+    <section id="detail-action-points" class="detail-block">
+      <div class="detail-grid">
+        ${(item.tips && item.tips.length) ? `<article class="support-card"><h5>使用提醒</h5><ul class="plain-list">${item.tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul></article>` : ""}
+        <article class="support-card">
+          <h5>行动建议</h5>
+          <ul class="plain-list">
+            <li>先用这页的话术做一次店员角色演练。</li>
+            <li>再回到内容页，用配套工具表检查执行一致性。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+    <section id="detail-assets" class="detail-block">
+      ${renderRelatedResources(item) || `<article class="support-card"><h5>继续推荐</h5><p>建议回到内容页，再看配套的正文和案例。</p></article>`}
+    </section>
+  `;
+}
+
+function buildCaseDetailBody(item) {
+  return `
+    <section id="detail-main" class="detail-block">
+      <div class="detail-grid">
+        <article class="chapter-block">
+          <h5>做法</h5>
+          <ul class="plain-list">
+            ${(item.approach || []).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}
+          </ul>
+        </article>
+        <article class="chapter-block">
+          <h5>结果</h5>
+          <ul class="plain-list">
+            ${(item.results || []).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}
+          </ul>
+        </article>
+      </div>
+    </section>
+    <section id="detail-action-points" class="detail-block">
+      <div class="detail-grid">
+        <article class="support-card">
+          <h5>可复用点</h5>
+          <ul class="plain-list">
+            ${(item.reusable || []).map((value) => `<li>${escapeHtml(value)}</li>`).join("")}
+          </ul>
+        </article>
+        ${item.source && isExternalUrl(item.source.url) ? `<article class="support-card"><h5>来源说明</h5><p>${escapeHtml(item.source.label || "外部来源")}</p><a class="btn btn-secondary" href="${escapeAttr(item.source.url)}" target="_blank" rel="noreferrer">打开来源</a></article>` : ""}
+      </div>
+    </section>
+    <section id="detail-assets" class="detail-block">
+      ${renderRelatedResources(item) || `<article class="support-card"><h5>接着看什么</h5><p>建议回到内容页，继续看配套 SOP 或工具表。</p></article>`}
+    </section>
+  `;
+}
+
+function buildDetailRecommendations(item, bundle) {
+  const items = [];
+  const seen = new Set([item.id]);
+  const push = (nextItem) => {
+    if (!nextItem || seen.has(nextItem.id)) {
+      return;
+    }
+    seen.add(nextItem.id);
+    items.push(nextItem);
+  };
+
+  (item.relatedResources || []).forEach((id) => push(model.lookup.get(id)));
+  (item.recommendedTools || []).forEach((id) => push(model.lookup.get(id)));
+  (item.recommendedCases || []).forEach((id) => push(model.lookup.get(id)));
+  if (item.relatedChapter) {
+    push(model.lookup.get(item.relatedChapter));
+  }
+
+  [
+    ...bundle.core,
+    ...bundle.sops,
+    ...bundle.tools,
+    ...bundle.scripts,
+    ...bundle.cases
+  ].forEach((nextItem) => {
+    if (items.length >= 4) {
+      return;
+    }
+    push(nextItem);
+  });
+
+  return items.slice(0, 4);
+}
+
+function openWorkspace(target) {
+  state.detailId = "";
+  state.detailSourceSection = target || "core-section";
+  state.view = "workspace";
+  persistState();
+  renderWorkspace(target);
+}
+
+function openDetail(id, sourceSection = "") {
+  const item = model.lookup.get(id);
+  if (!item) {
+    return;
+  }
+  state.detailId = id;
+  state.detailSourceSection = sourceSection || getSectionForType(item.contentType);
+  state.lastJump = state.detailSourceSection;
+  if (shouldTrackRecent(item.contentType)) {
+    pushRecent(id);
+  } else {
+    persistState();
+  }
+  state.view = "detail";
+  renderDetail();
+}
+
+function jumpTo(id) {
+  if (!id) {
+    return;
+  }
+
+  if (model.lookup.has(id)) {
+    openDetail(id, getSectionForType(model.lookup.get(id).contentType));
+    return;
+  }
+
+  const element = document.getElementById(id);
+  if (!element) {
+    return;
+  }
+
+  state.lastJump = id;
+  persistState();
+  element.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function getSectionForType(type) {
+  const map = {
+    chapter: "core-section",
+    deepread: "core-section",
+    sop: "sops-section",
+    tool: "tools-section",
+    script: "scripts-section",
+    case: "cases-section",
+    rawTable: "downloads-section",
+    manual: "downloads-section",
+    bundle: "downloads-section"
+  };
+  return map[type] || "core-section";
 }
 
 function renderSectionNotes(bundle) {
@@ -634,7 +1514,7 @@ function renderContinueCard() {
   }
 
   els.continueCard.classList.remove("hidden");
-  els.continueTitle.textContent = `${state.role} · ${state.stage} · ${state.industry}`;
+  els.continueTitle.textContent = [state.role, state.stage, state.industry].filter(Boolean).join(" · ");
   els.continueText.textContent = state.lastJump
     ? `系统记住了你上次查看到 ${getTitleById(state.lastJump)}，也保留了最近使用过的工具和话术。`
     : "系统已保留你上次的选择组合，可继续进入当前需求的完整工作台。";
@@ -658,7 +1538,6 @@ function renderFallbackNote(messages) {
 
 function renderQuickTabs(bundle) {
   const tabs = [
-    { id: "overview-section", label: "看总览", visible: true },
     { id: "core-section", label: "看正文", visible: bundle.core.length > 0 },
     { id: "action-section", label: "看动作", visible: true },
     { id: "sops-section", label: "看 SOP", visible: bundle.sops.length > 0 },
@@ -666,7 +1545,8 @@ function renderQuickTabs(bundle) {
     { id: "scripts-section", label: "看话术", visible: bundle.scripts.length > 0 },
     { id: "cases-section", label: "看案例", visible: bundle.cases.length > 0 },
     { id: "recommend-section", label: "看延伸", visible: (bundle.core.length + bundle.tools.length + bundle.scripts.length + bundle.cases.length) > 2 },
-    { id: "downloads-section", label: "看下载", visible: bundle.downloads.length > 0 }
+    { id: "downloads-section", label: "看下载", visible: bundle.downloads.length > 0 },
+    { id: "overview-section", label: "看脉络", visible: true }
   ].filter((item) => item.visible);
 
   els.workspaceQuickTabs.innerHTML = tabs.map((tab) => `
@@ -770,7 +1650,7 @@ function renderActionPlan(bundle, guide) {
       ${card.links.length ? `
         <div class="resource-pills">
           ${card.links.map((link) => `
-            <button class="chip chip-soft" type="button" data-jump="${escapeAttr(link.id)}">${escapeHtml(link.label)}</button>
+            <button class="chip chip-soft" type="button" data-open-detail="${escapeAttr(link.id)}" data-source-section="${escapeAttr(getSectionForType(model.lookup.get(link.id)?.contentType))}">${escapeHtml(link.label)}</button>
           `).join("")}
         </div>
       ` : ""}
@@ -892,8 +1772,15 @@ function renderDownloads(items) {
 
 function renderSearchResults(groups) {
   if (!state.search) {
+    if (els.searchAssistSection) {
+      els.searchAssistSection.classList.add("hidden");
+    }
     els.searchResults.innerHTML = `<p class="search-placeholder">输入关键词后，这里会按正文、SOP、工具、话术、案例、下载资料分组返回结果。</p>`;
     return;
+  }
+
+  if (els.searchAssistSection) {
+    els.searchAssistSection.classList.remove("hidden");
   }
 
   if (!groups.length) {
@@ -917,6 +1804,9 @@ function renderSearchResults(groups) {
 }
 
 function renderStageFocus(guide) {
+  if (!els.stageFocusList) {
+    return;
+  }
   els.stageFocusList.innerHTML = `
     <ul class="plain-list">
       ${guide.focus.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
@@ -925,6 +1815,9 @@ function renderStageFocus(guide) {
 }
 
 function renderMetrics(guide) {
+  if (!els.metricCards) {
+    return;
+  }
   const metrics = model.metrics.filter((metric) => metric.stageBuckets.includes(state.stage)).slice(0, 4);
   const items = metrics.length ? metrics : [{
     title: "当前板块目标",
@@ -942,6 +1835,10 @@ function renderMetrics(guide) {
 }
 
 function renderRecent() {
+  if (!els.recentList) {
+    return;
+  }
+
   if (!state.recentIds.length) {
     els.recentList.innerHTML = `<p class="search-placeholder">最近展开或复制过的工具、话术、SOP 会显示在这里。</p>`;
     return;
@@ -961,6 +1858,9 @@ function renderRecent() {
 }
 
 function renderManualLinks() {
+  if (!els.manualLinks) {
+    return;
+  }
   const items = [];
   if (model.bundleDownload) {
     items.push(model.bundleDownload);
@@ -1522,6 +2422,25 @@ function toggleSection(id, visible) {
   section.classList.toggle("hidden", !visible);
 }
 
+function focusSelectionPrompt(message) {
+  if (message) {
+    showToast(message);
+  }
+
+  if (!els.selectorCard) {
+    return;
+  }
+
+  els.selectorCard.classList.remove("needs-attention");
+  void els.selectorCard.offsetWidth;
+  els.selectorCard.classList.add("needs-attention");
+  els.selectorCard.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  window.setTimeout(() => {
+    els.selectorCard.classList.remove("needs-attention");
+  }, 1400);
+}
+
 function toggleSelection(key, value) {
   state[key] = state[key] === value ? "" : value;
   persistState();
@@ -2015,4 +2934,186 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+function persistState() {
+  localStorage.setItem(storageKeys.selection, JSON.stringify({
+    role: state.role,
+    stage: state.stage,
+    industry: state.industry
+  }));
+  localStorage.setItem(storageKeys.view, state.view);
+  localStorage.setItem(storageKeys.search, state.search);
+  localStorage.setItem(storageKeys.recent, JSON.stringify(state.recentIds));
+  localStorage.setItem(storageKeys.lastJump, state.lastJump);
+  localStorage.setItem(storageKeys.detail, JSON.stringify({
+    id: state.detailId,
+    sourceSection: state.detailSourceSection
+  }));
+}
+
+function clearSelection() {
+  state.role = "";
+  state.stage = "";
+  state.industry = "";
+  state.lastJump = "";
+  state.detailId = "";
+  state.detailSourceSection = "core-section";
+  state.openItems = new Set();
+}
+
+function renderApp() {
+  if (state.view === "detail" && isSelectionComplete() && state.detailId) {
+    renderDetail();
+    return;
+  }
+  if (state.view === "workspace" && isSelectionComplete()) {
+    renderWorkspace();
+    return;
+  }
+  renderHome();
+}
+
+function showView(nextView) {
+  state.view = nextView;
+  els.homeView.classList.toggle("hidden", nextView !== "home");
+  els.workspaceView.classList.toggle("hidden", nextView !== "workspace");
+  els.detailView.classList.toggle("hidden", nextView !== "detail");
+  els.topbarHomeBtn.classList.toggle("hidden", nextView === "home");
+  persistState();
+}
+
+function renderHome() {
+  showView("home");
+
+  const previewBundle = isSelectionComplete() ? buildBundle({
+    role: state.role,
+    stage: state.stage,
+    industry: state.industry
+  }) : null;
+
+  const displayTotals = previewBundle ? {
+    core: previewBundle.core.length,
+    sops: previewBundle.sops.length,
+    tools: previewBundle.tools.length,
+    scripts: previewBundle.scripts.length,
+    cases: previewBundle.cases.length,
+    downloads: previewBundle.downloads.length
+  } : model.totals;
+
+  els.homeCounts.innerHTML = HOME_HERO_CARDS.map((card) => `
+    <article class="hero-stat-card hero-entry-card">
+      <span class="meta-pill">${escapeHtml(card.title)}</span>
+      <strong>${escapeHtml(card.getValue(displayTotals))}</strong>
+      <p>${escapeHtml(card.detail)}</p>
+      <div class="hero-card-actions">
+        <button
+          class="btn ${isSelectionComplete() ? "btn-secondary" : "btn-ghost"} hero-card-btn"
+          type="button"
+          data-module-target="${card.target}"
+        >${isSelectionComplete() ? "打开对应模块" : "先完成选择"}</button>
+      </div>
+    </article>
+  `).join("");
+
+  renderFilterPanel(els.homeFilterPanel, "home");
+  els.homeSelectionSummary.textContent = buildHomeSelectionSummary(previewBundle);
+  els.homeStartButton.disabled = !isSelectionComplete();
+  els.homeStartButton.classList.toggle("is-disabled", !isSelectionComplete());
+  els.homeStartButton.textContent = isSelectionComplete() ? "进入适合我的内容" : "先完成角色和需求";
+
+  renderHomeModules(previewBundle);
+  renderHomeFlow();
+  renderContinueCard();
+
+  const moduleEyebrow = document.querySelector(".module-section .eyebrow");
+  const moduleTitle = document.querySelector(".module-section .section-head h3");
+  if (moduleEyebrow) {
+    moduleEyebrow.textContent = "工具武器库";
+  }
+  if (moduleTitle) {
+    moduleTitle.textContent = "正文、行动指令、SOP、工具、话术和案例都从这里直接进入";
+  }
+}
+
+function renderFilterPanel(element, mode) {
+  if (mode === "home") {
+    element.innerHTML = `
+      <div class="home-filter-grid">
+        ${FILTER_GROUPS.map((group) => renderPickerCard(group, mode)).join("")}
+      </div>
+    `;
+    return;
+  }
+
+  element.innerHTML = FILTER_GROUPS.map((group) => renderPickerCard(group, mode)).join("");
+}
+
+function renderPickerCard(group, mode, isInner = false) {
+  const attr = mode === "home" ? "data-home-filter-group" : "data-filter-group";
+  const valueAttr = mode === "home" ? "data-home-filter-value" : "data-filter-value";
+  const cardClass = [
+    "picker-card",
+    isInner ? "picker-card-nested" : "",
+    mode === "home" && group.key === "industry" ? "picker-card-secondary" : ""
+  ].filter(Boolean).join(" ");
+
+  return `
+    <section class="${cardClass}">
+      <div class="picker-head">
+        <div>
+          <h4>${escapeHtml(group.label)}</h4>
+          <p>${escapeHtml(group.hint)}</p>
+        </div>
+      </div>
+      <div class="filter-chip-row">
+        ${group.options.map((option) => `
+          <button
+            class="filter-chip${state[group.key] === option ? " is-active" : ""}"
+            type="button"
+            ${attr}="${group.key}"
+            ${valueAttr}="${escapeAttr(option)}"
+          >${escapeHtml(option)}</button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeModules(bundle) {
+  const counts = bundle ? {
+    core: bundle.core.length,
+    sops: bundle.sops.length,
+    tools: bundle.tools.length,
+    scripts: bundle.scripts.length,
+    cases: bundle.cases.length,
+    downloads: bundle.downloads.length
+  } : model.totals;
+
+  const items = HOME_MODULES.filter((module) => !bundle || counts[module.countKey] > 0);
+
+  els.homeModuleGrid.innerHTML = items.map((module, index) => `
+    <article class="module-card${isSelectionComplete() ? " is-ready" : " is-prompt"}${module.id === "module-core" ? " is-primary-entry" : ""}">
+      <div class="module-card-top">
+        <span class="module-index">${String(index + 1).padStart(2, "0")}</span>
+        <div class="module-meta">
+          <span class="meta-pill">${escapeHtml(String(counts[module.countKey]))}</span>
+          <span class="chip chip-soft">${escapeHtml(module.title)}</span>
+        </div>
+      </div>
+      <h4>${escapeHtml(module.title)}</h4>
+      <p>${escapeHtml(module.summary)}</p>
+      <ul class="module-points">
+        ${module.points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+      </ul>
+      <div class="module-footer">
+        <p class="module-scene">${escapeHtml(module.scene)}</p>
+        <button
+          class="btn ${isSelectionComplete() ? "btn-secondary" : "btn-ghost"} module-entry-btn"
+          type="button"
+          data-module-target="${module.target}"
+        >${isSelectionComplete() ? module.buttonLabel : "先完成选择"}</button>
+      </div>
+    </article>
+  `).join("");
 }

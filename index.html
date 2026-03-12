@@ -43,7 +43,7 @@
           </div>
         </section>
 
-        <section class="selector-card">
+        <section id="selectorCard" class="selector-card">
           <div class="section-head">
             <div>
               <p class="eyebrow">开始使用</p>
@@ -108,6 +108,16 @@
             <div id="searchState" class="search-state"></div>
           </div>
           <div id="workspaceFilterPanel" class="filter-panel-stack compact"></div>
+        </section>
+
+        <section id="searchAssistSection" class="content-section search-assist hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">搜索定位</p>
+              <h3>按关键词快速定位到对应内容</h3>
+            </div>
+          </div>
+          <div id="searchResults" class="search-results"></div>
         </section>
 
         <section id="workspaceQuickTabs" class="workspace-quick-tabs"></section>
@@ -220,13 +230,7 @@
             </section>
           </div>
 
-          <aside class="workspace-side">
-            <div class="panel-card">
-              <p class="eyebrow">搜索结果</p>
-              <h3>按类型快速定位</h3>
-              <div id="searchResults" class="search-results"></div>
-            </div>
-
+          <section class="workspace-side">
             <div class="panel-card">
               <p class="eyebrow">当前重点</p>
               <h3>先盯这几件事</h3>
@@ -240,24 +244,59 @@
             </div>
 
             <div class="panel-card">
-              <p class="eyebrow">最近使用</p>
-              <h3>继续上次动作</h3>
-              <div id="recentList" class="recent-list"></div>
-            </div>
-
-            <div class="panel-card">
               <p class="eyebrow">手册与资料</p>
               <h3>完整资料入口</h3>
               <div id="manualLinks" class="manual-list"></div>
             </div>
-          </aside>
+          </section>
         </div>
 
         <div class="mobile-action-bar">
-          <button class="btn btn-secondary" type="button" data-jump="overview-section">回到总览</button>
+          <button class="btn btn-secondary" type="button" data-jump="core-section">看正文</button>
           <button class="btn btn-secondary" type="button" data-jump="tools-section">看工具</button>
           <button class="btn btn-secondary" type="button" data-jump="scripts-section">看话术</button>
         </div>
+      </section>
+      <section id="detailView" class="detail-view hidden">
+        <section class="detail-header-card">
+          <div class="detail-header-main">
+            <p class="eyebrow">子页阅读</p>
+            <h2 id="detailTitle">内容详情</h2>
+            <p id="detailSummary" class="workspace-summary"></p>
+            <div id="detailMeta" class="module-meta"></div>
+          </div>
+          <div class="detail-header-actions">
+            <button id="detailBackButton" class="btn btn-secondary" type="button">返回内容页</button>
+            <button id="detailHomeButton" class="btn btn-ghost" type="button">返回首页</button>
+          </div>
+        </section>
+
+        <section class="detail-toolbar-card">
+          <div class="detail-toolbar-main">
+            <div class="detail-toolbar-copy">
+              <p class="eyebrow">当前阅读</p>
+              <h3 id="detailToolbarTitle">当前内容</h3>
+              <p id="detailToolbarText" class="section-note"></p>
+            </div>
+            <div id="detailPrimaryActions" class="card-actions"></div>
+          </div>
+          <div id="detailAnchorTabs" class="workspace-quick-tabs"></div>
+        </section>
+
+        <section id="detailBodySection" class="content-section detail-content-section">
+          <div id="detailBody" class="detail-body"></div>
+        </section>
+
+        <section id="detailRecommendationsSection" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">继续推荐</p>
+              <h3>看完这一页后，建议顺手继续看这些内容</h3>
+              <p id="detailRecommendationNote" class="section-note"></p>
+            </div>
+          </div>
+          <div id="detailRecommendations" class="recommend-grid"></div>
+        </section>
       </section>
     </main>
   </div>
