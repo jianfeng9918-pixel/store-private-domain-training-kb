@@ -34,11 +34,23 @@
 
             <div class="selector-footer">
               <div class="selector-actions">
-                <button id="homeStartButton" class="btn btn-primary" type="button">开始阅读适合我的内容</button>
-                <button id="homeOriginalsButton" class="btn btn-secondary" type="button">直接看原文</button>
+                <button id="homeStartButton" class="btn btn-primary" type="button">进入我的方案</button>
+                <button id="homeOriginalsButton" class="btn btn-secondary" type="button">完整阅读模式</button>
               </div>
               <div id="homeSelectionSummary" class="selection-note"></div>
             </div>
+
+            <section class="home-search-panel">
+              <div class="advanced-copy">
+                <p class="eyebrow">全局搜索</p>
+                <p class="section-note">直接搜索问题、方法、SOP、工具或案例，系统会立刻给出结果和对应入口。</p>
+              </div>
+              <label class="search-field" for="homeSearchInput">
+                <span>搜索问题、方法、案例、工具和资料</span>
+                <input id="homeSearchInput" type="search" placeholder="例如：不会加粉、会员日、朋友圈、私聊转化">
+              </label>
+              <div id="homeSearchState" class="search-state"></div>
+            </section>
 
             <section class="advanced-wrap">
               <div class="advanced-copy">
@@ -51,6 +63,17 @@
               </div>
             </section>
           </section>
+        </section>
+
+        <section id="homeSearchAssistSection" class="content-section search-assist hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">搜索结果</p>
+              <h3>根据你的问题直接定位到答案和相关内容</h3>
+              <p id="homeSearchGuide" class="section-note"></p>
+            </div>
+          </div>
+          <div id="homeSearchResults" class="search-results"></div>
         </section>
 
         <section id="homeArsenalSection" class="module-section">
@@ -71,7 +94,7 @@
               <h3>直接打开手册全文、外部资料和原表下载</h3>
               <p class="section-note">这里集中展示完整手册、PDF / 官方资料以及原表下载入口，适合系统阅读和直接带走资料。</p>
             </div>
-            <button id="homeOriginalsEntryButton" class="btn btn-primary" type="button">进入完整阅读</button>
+            <button id="homeOriginalsEntryButton" class="btn btn-primary" type="button">进入完整阅读模式</button>
           </div>
           <div id="homeOriginalsPreviewGrid" class="download-grid"></div>
         </section>
@@ -122,6 +145,25 @@
             </label>
             <div id="searchState" class="search-state"></div>
           </div>
+        </section>
+
+        <section id="summary-section" class="content-section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">摘要导读</p>
+              <h3>先看这组门店最常见的问题、推荐顺序和当前目录</h3>
+              <p id="summaryNote" class="section-note"></p>
+            </div>
+          </div>
+          <div id="summaryGuideGrid" class="summary-guide-grid"></div>
+          <div class="section-head summary-recommend-head">
+            <div>
+              <p class="eyebrow">优先推荐</p>
+              <h3>建议先从这几块开始</h3>
+              <p id="summaryRecommendNote" class="section-note"></p>
+            </div>
+          </div>
+          <div id="summaryRecommendCards" class="recommend-grid"></div>
         </section>
 
         <section class="progress-card">

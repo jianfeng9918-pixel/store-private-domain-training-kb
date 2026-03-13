@@ -95,8 +95,32 @@ const NEED_GUIDES = {
   }
 };
 
+const NEED_PROBLEMS = {
+  引流: [
+    "门店每天有到店流量，但没有稳定的加粉动作。",
+    "活动做了很多次，顾客愿意领券但不愿意留下联系方式。",
+    "员工知道要引流，但说不清每个触点该放什么入口。 "
+  ],
+  拉新: [
+    "新客加进来后，没有欢迎流程，首周很快失联。",
+    "店员会加粉，但不会做备注、分层和后续跟进。",
+    "新客数量在增长，但 7 天首单率和首周触达率偏低。"
+  ],
+  留存: [
+    "朋友圈、社群和售后提醒没有节奏，顾客看不到持续存在感。",
+    "群里只会发促销，互动低，老客逐渐沉默。",
+    "门店没有固定的会员内容节奏，顾客留存靠临时活动。"
+  ],
+  复购: [
+    "老客没有固定回访动作，复购更多靠店员个人经验。",
+    "沉默客户没有被识别出来，也没有唤醒机制。",
+    "活动做了很多，但复购率、老客贡献和唤醒效率没有被持续管理。"
+  ]
+};
+
 const HOME_SECTION_LABELS = {
   selectorCard: "选择区",
+  homeSearchAssistSection: "搜索结果",
   homeArsenalSection: "工具武器库",
   homeOriginalsSection: "完整阅读",
   capabilitySection: "了解系统能力",
@@ -104,6 +128,7 @@ const HOME_SECTION_LABELS = {
 };
 
 const WORKSPACE_SECTION_LABELS = {
+  "summary-section": "摘要导读",
   "core-section": "正文",
   "action-section": "行动指令",
   "sops-section": "SOP",
@@ -167,12 +192,14 @@ const state = {
   role: "",
   need: "",
   industry: "",
+  homeSearch: "",
   search: "",
   currentSection: "selectorCard",
-  lastWorkspaceAnchor: "core-section",
+  lastWorkspaceAnchor: "summary-section",
   lastWorkspaceScroll: 0,
   detailId: "",
-  detailSourceSection: "core-section",
+  detailSourceSection: "summary-section",
+  detailSourceView: "workspace",
   originalSourceView: "home",
   recentIds: [],
   completedDetailIds: new Set()
@@ -196,6 +223,11 @@ const els = {
   homeStartButton: document.getElementById("homeStartButton"),
   homeOriginalsButton: document.getElementById("homeOriginalsButton"),
   homeSelectionSummary: document.getElementById("homeSelectionSummary"),
+  homeSearchInput: document.getElementById("homeSearchInput"),
+  homeSearchState: document.getElementById("homeSearchState"),
+  homeSearchAssistSection: document.getElementById("homeSearchAssistSection"),
+  homeSearchGuide: document.getElementById("homeSearchGuide"),
+  homeSearchResults: document.getElementById("homeSearchResults"),
   homeArsenalSection: document.getElementById("homeArsenalSection"),
   homeArsenalGrid: document.getElementById("homeArsenalGrid"),
   homeOriginalsSection: document.getElementById("homeOriginalsSection"),
@@ -216,6 +248,10 @@ const els = {
   workspaceBackButton: document.getElementById("workspaceBackButton"),
   workspaceResetButton: document.getElementById("workspaceResetButton"),
   workspaceFilterPanel: document.getElementById("workspaceFilterPanel"),
+  summaryNote: document.getElementById("summaryNote"),
+  summaryGuideGrid: document.getElementById("summaryGuideGrid"),
+  summaryRecommendNote: document.getElementById("summaryRecommendNote"),
+  summaryRecommendCards: document.getElementById("summaryRecommendCards"),
   searchInput: document.getElementById("searchInput"),
   searchState: document.getElementById("searchState"),
   searchAssistSection: document.getElementById("searchAssistSection"),
@@ -310,12 +346,14 @@ function hydrateState() {
   state.need = savedSelection.need || savedSelection.stage || "";
   state.industry = savedSelection.industry || "";
   state.view = savedUi.view || "home";
+  state.homeSearch = savedUi.homeSearch || "";
   state.search = savedUi.search || "";
   state.currentSection = savedUi.currentSection || "selectorCard";
-  state.lastWorkspaceAnchor = savedUi.lastWorkspaceAnchor || "core-section";
+  state.lastWorkspaceAnchor = savedUi.lastWorkspaceAnchor || "summary-section";
   state.lastWorkspaceScroll = Number(savedUi.lastWorkspaceScroll || 0);
   state.detailId = savedUi.detailId || "";
-  state.detailSourceSection = savedUi.detailSourceSection || "core-section";
+  state.detailSourceSection = savedUi.detailSourceSection || "summary-section";
+  state.detailSourceView = savedUi.detailSourceView || "workspace";
   state.originalSourceView = savedUi.originalSourceView || "home";
   state.recentIds = parseJson(localStorage.getItem(storageKeys.recent), []);
   state.completedDetailIds = new Set(parseJson(localStorage.getItem(storageKeys.completed), []));
@@ -340,11 +378,19 @@ function bindEvents() {
       focusSelectionPrompt("请先选择角色和当前需求");
       return;
     }
-    openWorkspace("core-section");
+    openWorkspace("summary-section");
   });
 
   els.homeOriginalsButton.addEventListener("click", () => openOriginals("home"));
   els.homeOriginalsEntryButton.addEventListener("click", () => openOriginals("home"));
+
+  els.homeSearchInput.addEventListener("input", (event) => {
+    state.homeSearch = event.target.value.trim();
+    persistState();
+    if (state.view === "home") {
+      renderHome();
+    }
+  });
 
   els.capabilityToggle.addEventListener("click", () => {
     const expanded = els.capabilityToggle.getAttribute("aria-expanded") === "true";
@@ -357,7 +403,7 @@ function bindEvents() {
       focusSelectionPrompt("请先选择角色和当前需求");
       return;
     }
-    openWorkspace(state.lastWorkspaceAnchor || "core-section");
+    openWorkspace(state.lastWorkspaceAnchor || "summary-section");
   });
 
   els.workspaceBackButton.addEventListener("click", () => {
@@ -388,17 +434,17 @@ function bindEvents() {
       renderApp();
       return;
     }
-    openWorkspace(state.lastWorkspaceAnchor || "core-section");
+    openWorkspace(state.lastWorkspaceAnchor || "summary-section");
   });
 
   els.detailBackButton.addEventListener("click", () => {
-    if (!isSelectionComplete()) {
+    if (state.detailSourceView === "home" || !isSelectionComplete()) {
       state.view = "home";
       persistState();
       renderApp();
       return;
     }
-    openWorkspace(state.detailSourceSection || state.lastWorkspaceAnchor || "core-section", {
+    openWorkspace(state.detailSourceSection || state.lastWorkspaceAnchor || "summary-section", {
       restoreScroll: true
     });
   });
@@ -477,7 +523,11 @@ function handleDocumentClick(event) {
 
   const detailButton = target.closest("[data-open-detail]");
   if (detailButton) {
-    openDetail(detailButton.dataset.openDetail, detailButton.dataset.sourceSection || "");
+    openDetail(
+      detailButton.dataset.openDetail,
+      detailButton.dataset.sourceSection || "",
+      detailButton.dataset.sourceView || state.view
+    );
     return;
   }
 
@@ -548,6 +598,7 @@ function renderHome() {
 
   renderHomeFilters();
   renderHomeSummary();
+  renderHomeSearch();
   renderHomeCapability();
   renderHomeArsenal(buildHomeArsenal(getCurrentSelection()));
   renderHomeOriginalsPreview(buildOriginalsBundle(getCurrentSelection()));
@@ -571,11 +622,40 @@ function renderHomeSummary() {
   if (state.role) parts.push(`角色：${state.role}`);
   if (state.need) parts.push(`当前需求：${state.need}`);
   if (state.industry) parts.push(`行业：${state.industry}`);
+  els.homeSearchInput.value = state.homeSearch;
   els.homeSelectionSummary.textContent = parts.length
     ? `当前将按 ${parts.join(" / ")} 排序内容。`
     : "先选角色和当前需求，行业可作为高级匹配常驻补充。";
   els.homeStartButton.disabled = !isSelectionComplete();
   els.homeStartButton.classList.toggle("is-disabled", !isSelectionComplete());
+}
+
+function renderHomeSearch() {
+  const groups = buildHomeSearchGroups(state.homeSearch);
+  const hasQuery = Boolean(state.homeSearch);
+  els.homeSearchAssistSection.classList.toggle("hidden", !hasQuery);
+  if (!hasQuery) {
+    els.homeSearchState.textContent = "输入问题、方法、案例、工具或资料，系统会立刻给出入口。";
+    els.homeSearchGuide.textContent = "";
+    els.homeSearchResults.innerHTML = "";
+    return;
+  }
+
+  const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+  els.homeSearchState.textContent = total
+    ? `关键词“${state.homeSearch}”命中 ${total} 条结果。`
+    : `关键词“${state.homeSearch}”暂未命中，建议先完成选择后进入工作台查看完整内容。`;
+  els.homeSearchGuide.textContent = total
+    ? "系统已经把最接近的问题解答、正文、SOP、工具、案例和资料整理在下面。"
+    : "你也可以换一个更具体的词，例如会员日、朋友圈、私聊转化、加粉话术。";
+  els.homeSearchResults.innerHTML = groups.map((group) => `
+    <section class="search-group">
+      <h4 class="search-group-title">${escapeHtml(group.label)}</h4>
+      <div class="resource-grid">
+        ${group.items.map((item) => renderSearchResult(item, "home", group.label === "问题解答")).join("")}
+      </div>
+    </section>
+  `).join("");
 }
 
 function renderHomeCapability() {
@@ -661,8 +741,8 @@ function renderWorkspace(target = "", options = {}) {
   renderFallbackNote(bundle.note);
   renderWorkspaceFilters();
   els.searchInput.value = state.search;
+  renderSummaryGuide(bundle, guide);
   renderSearch(bundle);
-  renderQuickTabs(getVisibleWorkspaceSections(bundle));
   renderCore(bundle.core);
   renderActionPlan(bundle, guide);
   renderSops(bundle.sops);
@@ -673,10 +753,11 @@ function renderWorkspace(target = "", options = {}) {
   renderRecommendations(bundle);
 
   runtime.visibleSections = getVisibleWorkspaceSections(bundle);
+  renderQuickTabs(runtime.visibleSections);
   renderReadingProgress("workspace");
   renderFloatingNav();
 
-  const jumpTarget = target || state.lastWorkspaceAnchor || "core-section";
+  const jumpTarget = target || state.lastWorkspaceAnchor || "summary-section";
   window.requestAnimationFrame(() => {
     if (options.restoreScroll && state.lastWorkspaceScroll > 0) {
       window.scrollTo({ top: state.lastWorkspaceScroll, behavior: "auto" });
@@ -694,6 +775,61 @@ function renderWorkspace(target = "", options = {}) {
 
 function renderWorkspaceFilters() {
   els.workspaceFilterPanel.innerHTML = FILTER_GROUPS.map((group) => renderFilterGroup(group, state[group.key])).join("");
+}
+
+function renderSummaryGuide(bundle, guide) {
+  const problems = (NEED_PROBLEMS[state.need] || []).slice(0, 3);
+  const sections = buildWorkspaceSectionList(bundle, guide);
+  const recommendedOrder = sections
+    .map((section) => section.label)
+    .slice(0, 6);
+  const recommendedItems = buildSummaryRecommendations(bundle);
+
+  els.summaryNote.textContent = `当前按 ${state.role} / ${state.need}${state.industry ? ` / ${state.industry}` : ""} 为你排了最常见问题、推荐阅读顺序和优先入口。`;
+  els.summaryGuideGrid.innerHTML = [
+    renderSummaryGuideCard({
+      title: "你当前的组合",
+      text: `适合 ${state.role} 在${state.industry ? `${state.industry}门店` : "门店场景"}里处理“${state.need}”问题。${guide ? guide.summary : ""}`,
+      list: guide?.focus?.slice(0, 2) || []
+    }),
+    renderSummaryGuideCard({
+      title: "这一类门店最常见的问题",
+      text: "先把最容易卡住的动作看清楚，再决定先读正文、SOP 还是工具。",
+      list: problems
+    }),
+    renderSummaryGuideCard({
+      title: "建议先看什么",
+      text: "系统已经把阅读顺序按“先理解、再执行、再拿工具”排好了。",
+      list: recommendedOrder.map((label, index) => `${index + 1}. ${label}`)
+    }),
+    renderSummaryGuideCard({
+      title: "本页目录",
+      text: "你可以直接点到当前最需要的一块，不用反复跳转。",
+      buttons: sections.map((section) => ({
+        label: section.label,
+        jump: section.id
+      }))
+    })
+  ].join("");
+
+  els.summaryRecommendNote.textContent = recommendedItems.length
+    ? "这四个入口已经按你当前组合排好优先级，建议从左到右依次看。"
+    : "系统会在正文、SOP、工具和案例中优先推荐最适合当前组合的内容。";
+  els.summaryRecommendCards.innerHTML = recommendedItems.map((item, index) => `
+    <article class="preview-card${index === 0 ? " preview-card-recommended" : ""}" id="summary-${escapeAttr(item.id)}">
+      <div class="preview-card-copy">
+        <div class="module-meta">
+          <span class="chip chip-soft">${escapeHtml(TYPE_LABELS[item.contentType] || "内容")}</span>
+          ${index === 0 ? `<span class="chip chip-highlight">建议先看</span>` : ""}
+        </div>
+        <h4>${escapeHtml(item.title)}</h4>
+        <p>${escapeHtml(getItemBenefit(item))}</p>
+      </div>
+      <div class="card-actions">
+        ${resolveActionTarget(item)}
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderFallbackNote(message) {
@@ -727,7 +863,7 @@ function renderSearch(bundle) {
 
 function renderQuickTabs(sections) {
   els.workspaceQuickTabs.innerHTML = sections.map((section) => `
-    <button class="chip${state.currentSection === section.id ? " chip-highlight" : ""}" type="button" data-jump="${section.id}">
+    <button class="chip workspace-tab${state.currentSection === section.id ? " chip-highlight is-active" : ""}" type="button" data-jump="${section.id}">
       ${escapeHtml(section.label)}
     </button>
   `).join("");
@@ -931,6 +1067,7 @@ function renderDetail() {
   const nextItem = siblings[currentIndex + 1] || null;
 
   els.detailTitle.textContent = item.title;
+  els.detailBackButton.textContent = state.detailSourceView === "home" ? "返回首页搜索" : "返回内容页";
   els.detailSummary.textContent = item.summary || item.overview || "";
   els.detailMeta.innerHTML = renderContextBadges(item);
   els.detailCurrentLabel.textContent = `你正在看：${TYPE_LABELS[item.contentType] || "正文"}`;
@@ -1020,6 +1157,32 @@ function renderDirectory() {
 function closeDirectory() {
   els.directoryBackdrop.classList.add("hidden");
   els.directorySheet.classList.add("hidden");
+}
+
+function syncCurrentSectionUI() {
+  const toggleActive = (container) => {
+    if (!container) return;
+    container.querySelectorAll("[data-jump]").forEach((button) => {
+      const isActive = button.dataset.jump === state.currentSection;
+      if (button.classList.contains("chip")) {
+        button.classList.toggle("chip-highlight", isActive);
+      }
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-current", isActive ? "true" : "false");
+    });
+  };
+
+  toggleActive(els.workspaceQuickTabs);
+  toggleActive(els.detailAnchorTabs);
+  toggleActive(els.summaryGuideGrid);
+
+  if (state.view === "workspace" || state.view === "detail") {
+    renderReadingProgress(state.view);
+  }
+
+  if (!els.directorySheet.classList.contains("hidden")) {
+    renderDirectory();
+  }
 }
 
 function buildHomeArsenal(selection) {
@@ -1141,6 +1304,21 @@ function buildWorkspaceSummary(bundle, guide) {
   return parts.join(" ");
 }
 
+function buildSummaryRecommendations(bundle) {
+  const list = [];
+  const push = (item) => {
+    if (!item || list.some((entry) => entry.id === item.id)) return;
+    list.push(item);
+  };
+
+  push(bundle.core[0]);
+  push(bundle.sops[0]);
+  push(bundle.tools[0]);
+  push(bundle.cases[0]);
+  push(bundle.scripts[0]);
+  return list.slice(0, 4);
+}
+
 function buildWorkspaceRecommendations(bundle) {
   const list = [];
   const push = (item) => {
@@ -1166,7 +1344,6 @@ function buildDetailToolbarText(item) {
 function buildDetailPrimaryActions(item) {
   const actions = [];
   actions.push(`<button class="btn btn-secondary" type="button" data-jump="detailBodySection">直接看正文</button>`);
-  actions.push(`<button class="btn btn-ghost" type="button" data-copy-item="${escapeAttr(item.id)}">复制内容</button>`);
   if (item.manualFile && isRelativeAsset(item.manualFile)) {
     actions.push(renderLinkButton(item.manualFile, "打开手册", { secondary: true }));
   }
@@ -1244,7 +1421,7 @@ function buildDetailActionCards(item) {
   return getRelatedCandidates(item).slice(0, 3).map((entry) => ({
     title: entry.title,
     text: getItemBenefit(entry),
-    buttonHtml: resolveActionTarget(entry)
+    buttonHtml: buildDetailActionTarget(entry)
   }));
 }
 
@@ -1266,6 +1443,19 @@ function getRelatedCandidates(item) {
   return dedupeById([...direct, ...fallback]).filter((entry) => entry.id !== item.id);
 }
 
+function buildDetailActionTarget(item) {
+  if (item.contentType === "script") {
+    return `<button class="btn btn-secondary" type="button" data-copy-item="${escapeAttr(item.id)}">复制对应话术</button>`;
+  }
+  if (item.contentType === "tool" && item.downloadMode === "download" && hasDownloadTarget(item)) {
+    return renderLinkButton(item.downloadUrl, "打开对应工具");
+  }
+  if (item.contentType === "case") {
+    return `<button class="btn btn-secondary" type="button" data-focus-item="${escapeAttr(item.id)}" data-section="${escapeAttr(getSectionForType(item.contentType))}">看一个案例</button>`;
+  }
+  return resolveActionTarget(item);
+}
+
 function getSiblingItems(item) {
   const bundle = runtime.bundle || buildBundle(getCurrentSelection());
   return item.contentType === "sop"
@@ -1273,11 +1463,12 @@ function getSiblingItems(item) {
     : bundle.core.filter(hasDetailResources);
 }
 
-function openWorkspace(target = "core-section", options = {}) {
+function openWorkspace(target = "summary-section", options = {}) {
   state.view = "workspace";
   state.detailId = "";
   if (target) state.lastWorkspaceAnchor = target;
   if (options.focusItem) runtime.pendingFocusItem = options.focusItem;
+  if (options.clearSearch) state.search = "";
   persistState();
   renderWorkspace(target, options);
 }
@@ -1289,7 +1480,7 @@ function openOriginals(sourceView = "home") {
   renderOriginals();
 }
 
-function openDetail(id, sourceSection = "") {
+function openDetail(id, sourceSection = "", sourceView = state.view) {
   const item = model.lookup.get(id);
   if (!item) return;
   if (!hasDetailResources(item)) {
@@ -1297,9 +1488,13 @@ function openDetail(id, sourceSection = "") {
     return;
   }
 
+  if (sourceView === "home") {
+    applySuggestedSelection(item);
+  }
   state.lastWorkspaceScroll = window.scrollY;
   state.detailId = id;
   state.detailSourceSection = sourceSection || getSectionForType(item.contentType);
+  state.detailSourceView = sourceView === "detail" ? (state.detailSourceView || "workspace") : sourceView;
   state.view = "detail";
   pushRecent(id);
   persistState();
@@ -1317,6 +1512,7 @@ function jumpTo(id, smooth = true) {
     state.lastWorkspaceScroll = window.scrollY;
   }
   persistState();
+  syncCurrentSectionUI();
   element.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
 }
 
@@ -1333,8 +1529,9 @@ function focusItemCard(itemId, sectionId = "") {
   if (!itemId) return;
   const item = model.lookup.get(itemId);
   const targetSection = sectionId || getSectionForType(item?.contentType || "");
+  if (item) applySuggestedSelection(item);
   state.detailId = "";
-  openWorkspace(targetSection, { focusItem: itemId });
+  openWorkspace(targetSection, { focusItem: itemId, clearSearch: true });
 }
 
 function highlightCard(itemId) {
@@ -1345,6 +1542,22 @@ function highlightCard(itemId) {
   element.classList.add("needs-attention");
   element.scrollIntoView({ behavior: "smooth", block: "center" });
   window.setTimeout(() => element.classList.remove("needs-attention"), 1400);
+}
+
+function applySuggestedSelection(item) {
+  if (!item) return;
+  if (!state.role) {
+    state.role = item.roles?.includes("老板") ? "老板" : (item.roles?.[0] || defaults.roles[0] || "");
+  }
+  if (!state.need) {
+    state.need = item.stageBuckets?.find((entry) => NEED_BUCKETS.includes(entry)) || NEED_BUCKETS[0];
+  }
+  if (!state.industry) {
+    const restrictedIndustry = item.industries?.length && item.industries.length < defaults.industries.length
+      ? item.industries[0]
+      : "";
+    state.industry = restrictedIndustry || state.industry;
+  }
 }
 
 function renderFilterGroup(group, activeValue) {
@@ -1499,6 +1712,21 @@ function renderActionCard(action) {
   `;
 }
 
+function renderSummaryGuideCard({ title, text, list = [], buttons = [] }) {
+  return `
+    <article class="summary-card">
+      <h4>${escapeHtml(title)}</h4>
+      <p>${escapeHtml(text)}</p>
+      ${list.length ? `<ul class="plain-list">${list.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")}</ul>` : ""}
+      ${buttons.length ? `
+        <div class="summary-directory">
+          ${buttons.map((entry) => `<button class="btn btn-ghost summary-directory-btn" type="button" data-jump="${escapeAttr(entry.jump)}">${escapeHtml(entry.label)}</button>`).join("")}
+        </div>
+      ` : ""}
+    </article>
+  `;
+}
+
 function renderDownloadCard(item) {
   const target = item.downloadUrl || item.url;
   const buttonHtml = hasDownloadTarget(item)
@@ -1525,7 +1753,19 @@ function renderDownloadCard(item) {
   `;
 }
 
-function renderSearchResult(item) {
+function renderSearchResult(item, mode = "workspace", isAnswer = false) {
+  if (isAnswer) {
+    const action = item.contentType === "deepread" || item.contentType === "chapter" || item.contentType === "sop"
+      ? `data-open-detail="${escapeAttr(item.id)}" data-source-section="${escapeAttr(getSectionForType(item.contentType))}" data-source-view="${escapeAttr(mode)}"`
+      : `data-focus-item="${escapeAttr(item.id)}" data-section="${escapeAttr(getSectionForType(item.contentType))}"`;
+    return `
+      <button class="search-result-btn search-answer-card" type="button" ${action}>
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${escapeHtml(`${TYPE_LABELS[item.contentType] || "内容"}：${getItemBenefit(item)}`)}</span>
+      </button>
+    `;
+  }
+
   if (item.contentType === "tool" || item.contentType === "script" || item.contentType === "case") {
     return `
       <button class="search-result-btn" type="button" data-focus-item="${escapeAttr(item.id)}" data-section="${escapeAttr(getSectionForType(item.contentType))}">
@@ -1544,7 +1784,7 @@ function renderSearchResult(item) {
   }
 
   return `
-    <button class="search-result-btn" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="${escapeAttr(getSectionForType(item.contentType))}">
+    <button class="search-result-btn" type="button" data-open-detail="${escapeAttr(item.id)}" data-source-section="${escapeAttr(getSectionForType(item.contentType))}" data-source-view="${escapeAttr(mode)}">
       <strong>${escapeHtml(item.title)}</strong>
       <span>${escapeHtml(getItemBenefit(item))}</span>
     </button>
@@ -1584,6 +1824,7 @@ function getSectionForType(type) {
 function getVisibleHomeSections() {
   return [
     { id: "selectorCard", label: HOME_SECTION_LABELS.selectorCard, summary: "返回选择角色、需求和行业。" },
+    !els.homeSearchAssistSection.classList.contains("hidden") ? { id: "homeSearchAssistSection", label: HOME_SECTION_LABELS.homeSearchAssistSection, summary: "直接看问题检索结果和入口。" } : null,
     { id: "homeArsenalSection", label: HOME_SECTION_LABELS.homeArsenalSection, summary: "直接看 6 张具体内容卡。" },
     { id: "homeOriginalsSection", label: HOME_SECTION_LABELS.homeOriginalsSection, summary: "进入完整手册、资料和原表下载。" },
     { id: "capabilitySection", label: HOME_SECTION_LABELS.capabilitySection, summary: "查看系统能力和工作路径。" },
@@ -1592,16 +1833,7 @@ function getVisibleHomeSections() {
 }
 
 function getVisibleWorkspaceSections(bundle = runtime.bundle) {
-  const sections = [];
-  if (bundle?.core.length) sections.push({ id: "core-section", label: "正文", summary: "优先看主线内容和深读入口。" });
-  if (!document.getElementById("action-section")?.classList.contains("hidden")) sections.push({ id: "action-section", label: "行动指令", summary: "看完后先做什么。" });
-  if (bundle?.sops.length) sections.push({ id: "sops-section", label: "SOP", summary: "完整流程怎么带着跑。" });
-  if (bundle?.tools.length) sections.push({ id: "tools-section", label: "工具", summary: "表格、检查表和模板。" });
-  if (bundle?.scripts.length) sections.push({ id: "scripts-section", label: "话术", summary: "现场能直接改写使用。" });
-  if (bundle?.cases.length) sections.push({ id: "cases-section", label: "案例", summary: "直接看做法、结果和可复用点。" });
-  if (bundle?.downloads.length) sections.push({ id: "downloads-section", label: "下载", summary: "可直接打开或下载的资料。" });
-  if (!document.getElementById("recommend-section")?.classList.contains("hidden")) sections.push({ id: "recommend-section", label: "推荐", summary: "下一步建议看什么。" });
-  return sections;
+  return buildWorkspaceSectionList(bundle, NEED_GUIDES[state.need]);
 }
 
 function getVisibleOriginalsSections(bundle = runtime.originals) {
@@ -1648,6 +1880,7 @@ function updateCurrentSectionFromScroll() {
     state.lastWorkspaceScroll = window.scrollY;
   }
   persistState();
+  syncCurrentSectionUI();
 }
 
 function maybeMarkCurrentDetailComplete() {
@@ -1681,7 +1914,73 @@ function buildSearchGroups(bundle, query) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(item);
   });
-  return [...groups.entries()].map(([label, itemsInGroup]) => ({ label, items: itemsInGroup }));
+  const order = ["正文", "SOP", "工具", "话术", "案例", "下载资料"];
+  return order
+    .filter((label) => groups.has(label))
+    .map((label) => ({ label, items: groups.get(label) }));
+}
+
+function buildWorkspaceSectionList(bundle = runtime.bundle, guide = NEED_GUIDES[state.need]) {
+  const sections = [];
+  if (bundle?.core.length) sections.push({ id: "summary-section", label: "摘要导读", summary: "先看常见问题、推荐顺序和当前目录。" });
+  if (bundle?.core.length) sections.push({ id: "core-section", label: "正文", summary: "优先看主线内容和深读入口。" });
+  if ((guide?.focus?.length || 0) || bundle?.sops.length || bundle?.tools.length) sections.push({ id: "action-section", label: "行动指令", summary: "看完后先做什么。" });
+  if (bundle?.sops.length) sections.push({ id: "sops-section", label: "SOP", summary: "完整流程怎么带着跑。" });
+  if (bundle?.tools.length) sections.push({ id: "tools-section", label: "工具", summary: "表格、检查表和模板。" });
+  if (bundle?.scripts.length) sections.push({ id: "scripts-section", label: "话术", summary: "现场能直接改写使用。" });
+  if (bundle?.cases.length) sections.push({ id: "cases-section", label: "案例", summary: "直接看做法、结果和可复用点。" });
+  if (bundle?.downloads.length) sections.push({ id: "downloads-section", label: "下载", summary: "可直接打开或下载的资料。" });
+  if (buildWorkspaceRecommendations(bundle).length) sections.push({ id: "recommend-section", label: "推荐", summary: "下一步建议看什么。" });
+  return sections;
+}
+
+function buildHomeSearchGroups(query) {
+  if (!query) return [];
+  const keyword = normalizeText(query);
+  const items = dedupeById([
+    ...model.itemsByType.deepread,
+    ...model.itemsByType.chapter,
+    ...model.itemsByType.sop,
+    ...model.itemsByType.tool,
+    ...model.itemsByType.script,
+    ...model.itemsByType.case,
+    ...model.manuals,
+    ...model.externalSources,
+    ...model.rawDownloadPool,
+    ...(model.bundleDownload ? [model.bundleDownload] : [])
+  ]);
+
+  const filtered = items
+    .map((item) => ({ item, score: searchScore(item, keyword) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 24)
+    .map((entry) => entry.item);
+
+  const answerItems = filtered.filter((item) => ["deepread", "chapter", "sop", "tool", "script", "case"].includes(item.contentType)).slice(0, 3);
+  const groups = [];
+  if (answerItems.length) groups.push({ label: "问题解答", items: answerItems });
+
+  const typeGroups = new Map();
+  filtered.forEach((item) => {
+    if (answerItems.some((entry) => entry.id === item.id)) return;
+    const key = item.contentType === "deepread" || item.contentType === "chapter" ? "正文"
+      : item.contentType === "sop" ? "SOP"
+      : item.contentType === "tool" || item.contentType === "script" ? "工具"
+      : item.contentType === "case" ? "案例"
+      : "资料";
+    if (!typeGroups.has(key)) typeGroups.set(key, []);
+    typeGroups.get(key).push(item);
+  });
+
+  const orderedGroups = ["正文", "SOP", "工具", "案例", "资料"]
+    .filter((label) => typeGroups.has(label))
+    .map((label) => ({
+      label,
+      items: typeGroups.get(label).slice(0, 6)
+    }));
+
+  return groups.concat(orderedGroups);
 }
 
 function searchScore(item, keyword) {
@@ -1691,6 +1990,7 @@ function searchScore(item, keyword) {
   if (normalizeText(item.title).includes(keyword)) score += 24;
   if (normalizeText(item.summary).includes(keyword)) score += 12;
   if (state.need && item.stageBuckets.includes(state.need)) score += 12;
+  if (state.role && item.roles && item.roles.includes(state.role)) score += 10;
   if (state.industry && item.industries.includes(state.industry)) score += 8;
   return score;
 }
@@ -1712,7 +2012,7 @@ function clearSelection() {
   state.industry = "";
   state.search = "";
   state.detailId = "";
-  state.lastWorkspaceAnchor = "core-section";
+  state.lastWorkspaceAnchor = "summary-section";
   state.lastWorkspaceScroll = 0;
 }
 
@@ -2108,12 +2408,14 @@ function persistState() {
   }));
   localStorage.setItem(storageKeys.ui, JSON.stringify({
     view: state.view,
+    homeSearch: state.homeSearch,
     search: state.search,
     currentSection: state.currentSection,
     lastWorkspaceAnchor: state.lastWorkspaceAnchor,
     lastWorkspaceScroll: state.lastWorkspaceScroll,
     detailId: state.detailId,
     detailSourceSection: state.detailSourceSection,
+    detailSourceView: state.detailSourceView,
     originalSourceView: state.originalSourceView
   }));
   localStorage.setItem(storageKeys.recent, JSON.stringify(state.recentIds));
